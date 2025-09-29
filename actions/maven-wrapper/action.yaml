@@ -1,0 +1,27 @@
+name: "Maven Wrapper"
+description: "Reusable Maven CI/CD wrapper"
+inputs:
+  run_lint:
+    description: "Enable lint step"
+    required: false
+    default: "false"
+  run_build:
+    description: "Enable build step"
+    required: false
+    default: "false"
+  run_test:
+    description: "Enable test step"
+    required: false
+    default: "false"
+  run_publish:
+    description: "Enable publish step"
+    required: false
+    default: "false"
+  properties_path:
+    description: "Path to project-specific properties file"
+    required: false
+runs:
+  using: "composite"
+  steps:
+    - name: Import Common Properties
+      run: ls -ltr
