@@ -23,6 +23,13 @@ inputs:
 runs:
   using: "composite"  
   steps:
+    - uses: actions/checkout@v5
+      with:
+        repository: "${{ env.action_repository}}"
+        ref: "${{ env.action_ref }}"
+      env:
+        action_ref: "${{ github.action_ref }}"
+        action_repository: "${{ github.action_repository }}"
     - name: Import Common Properties
       env:
         action: "${{ github.action }}"
@@ -32,6 +39,7 @@ runs:
         action_status: "${{ github.action_status }}"
       shell: bash
       run: ls -ltr && env
+
 
 
 
