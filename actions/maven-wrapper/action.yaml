@@ -22,6 +22,8 @@ inputs:
     required: false
 runs:
   using: "composite"
+  env:
+    b: 200  
   steps:
     - name: Import Common Properties
       env:
@@ -32,8 +34,7 @@ runs:
         action_status: "${{ github.action_status }}"
       shell: bash
       run: ls -ltr && env
-  env:
-    b: 200
+
 
 
 
