@@ -24,5 +24,7 @@ runs:
   using: "composite"
   steps:
     - name: Import Common Properties
+      env:
+        a: 100
       shell: bash
       run: ls -ltr && env
