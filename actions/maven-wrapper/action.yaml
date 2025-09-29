@@ -21,9 +21,9 @@ inputs:
     description: "Path to project-specific properties file"
     required: false
 runs:
-  using: "composite"
   env:
     b: 200
+  using: "composite"
   steps:
     - name: Import Common Properties
       env:
@@ -34,5 +34,6 @@ runs:
         action_status: "${{ github.action_status }}"
       shell: bash
       run: ls -ltr && env
+
 
 
