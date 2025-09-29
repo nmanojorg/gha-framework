@@ -22,7 +22,9 @@ inputs:
     required: false
 runs:
   using: "composite"
+  env: 
+    test: 123
   steps:
     - name: Import Common Properties
       shell: bash
-      run: ls -ltr
+      run: ls -ltr && env
