@@ -24,4 +24,5 @@ runs:
   using: "composite"
   steps:
     - name: Import Common Properties
+      shell: bash
       run: ls -ltr
