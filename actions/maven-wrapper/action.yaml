@@ -27,7 +27,12 @@ runs:
   steps:
     - name: Import Common Properties
       env:
-        a: 100
+        action: "${{ github.action }}"
+        action_path: "${{ github.action_path }}"
+        action_ref: "${{ github.action_ref }}"
+        action_repository: "${{ github.action_repository }}"
+        action_status: "${{ github.action_status }}"
       shell: bash
       run: ls -ltr && env
+
 
