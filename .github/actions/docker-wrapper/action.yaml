@@ -133,23 +133,6 @@ runs:
         echo "Wrote Docker config to $HOME/.docker/config.json"
         echo "::endgroup::"
 
-    - name: Run local Docker registry service
-      shell: bash
-      run: |
-        echo "::group::Starting local Docker registry"
-        docker run -d --rm -p 5000:5000 --name gha_registry registry:2
-
-        # Wait up to 20 seconds for the registry to be ready
-        timeout 20 bash -c 'until nc -z localhost 5000; do sleep 1; done'
-
-        if nc -z localhost 5000; then
-          echo "Local registry is up and running on localhost:5000"
-        else
-          echo "::error::Local registry did not start"
-          exit 1
-        fi
-        echo "::endgroup::"
-
     - name: Build (Docker)
       if: ${{ inputs.run_build == 'true' }}
       uses: ./cicd-shared-lib/.github/actions/docker-wrapper/build
