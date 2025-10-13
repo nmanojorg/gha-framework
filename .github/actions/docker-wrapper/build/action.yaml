@@ -6,7 +6,7 @@ runs:
   steps:
     - name: Prepare Docker build arguments
       id: buildargs
-      shell: python
+      shell: bash
       run: python $GITHUB_ACTION_PATH/prepare_build_args.py
 
     - name: Print Docker build environment (debug)
