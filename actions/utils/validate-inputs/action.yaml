@@ -1,0 +1,117 @@
+name: Validate Inputs
+description: Validates GitHub Action inputs with YAML configuration, supporting generic delimiter validation.
+
+inputs:
+  actionInputs:
+    description: |
+      YAML object with input keys and values.
+      Example:
+        env: dev
+        debug: true
+        test: false
+        config: configs/dev.env
+        tags: foo bar baz
+        options: one,two,three
+        values: 1|2|3
+    required: true
+
+  requiredInputs:
+    description: |
+      YAML array of keys that must be present in actionInputs and non-empty.
+      Example:
+        - env
+        - test
+    required: true
+
+  optionalInputs:
+    description: |
+      YAML array of optional keys.
+      Example:
+        - debug
+    required: false
+    default: ""
+
+  filesPathInputs:
+    description: |
+      YAML array of keys whose values (from actionInputs) are expected to be valid file paths.
+      Example:
+        - config
+    required: false
+    default: ""
+
+  typeValidations:
+    description: |
+      YAML mapping: type -> list of keys.
+      Supported types: string, booleanString, numberString
+      Example:
+        booleanString:
+          - debug
+          - test
+        string:
+          - env
+          - flag
+    required: false
+    default: ""
+
+  rangeValidations:
+    description: |
+      YAML mapping: key -> list of allowed values.
+      Example:
+        env:
+          - dev
+          - prod
+        count:
+          - "1"
+          - "2"
+          - "3"
+    required: false
+    default: ""
+
+  delimiterValidations:
+    description: |
+      YAML mapping: key -> delimiter string for validation.
+      Example:
+        tags: " "
+        options: ","
+        values: "|"
+    required: false
+    default: ""
+
+  dependencyValidations:
+    description: |
+      YAML mapping defining conditional required fields based on controller values.
+      Example:
+        runScan:
+          expectedValue: "true"
+          dependentInputs:
+            - scanTarget
+            - scanMode
+    required: false
+    default: ""
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+         python-version: "3.12"
+         
+    - name: Validate inputs via Python
+      shell: bash
+      run: |
+        echo "::group::START INPUT VALIDATION"
+        python3 -m venv .venv
+        . .venv/bin/activate
+        pip install pyyaml
+        python3 $GITHUB_ACTION_PATH/validate-inputs.py
+        echo "::endgroup::END INPUT VALIDATION"
+      env:
+        INPUT_ACTIONINPUTS: ${{ inputs.actionInputs }}
+        INPUT_REQUIREDINPUTS: ${{ inputs.requiredInputs }}
+        INPUT_OPTIONALINPUTS: ${{ inputs.optionalInputs }}
+        INPUT_FILESPATHINPUTS: ${{ inputs.filesPathInputs }}
+        INPUT_TYPEVALIDATIONS: ${{ inputs.typeValidations }}
+        INPUT_RANGEVALIDATIONS: ${{ inputs.rangeValidations }}
+        INPUT_DELIMITERVALIDATIONS: ${{ inputs.delimiterValidations }}
+        INPUT_DEPENDENCYVALIDATIONS: ${{ inputs.dependencyValidations }}

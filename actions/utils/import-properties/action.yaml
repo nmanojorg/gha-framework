@@ -1,0 +1,49 @@
+name: Import Properties Files
+description: Load one or more .properties files into GITHUB_ENV
+
+inputs:
+  files:
+    description: 'Space-separated list of .properties files'
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - shell: bash
+      run: |
+        echo "::notice::START IMPORTING PROPERTIES"
+        error_found=0
+        error_files=()
+
+        echo "::group::Importing Properties"
+        for file in ${{ inputs.files }}; do
+          echo "::group::Processing $file"
+          if [[ ! -f "$file" ]]; then
+            echo "::error::Properties file not found: $file"
+            error_found=1
+            error_files+=("$file")
+            echo "::endgroup::"
+            continue
+          fi
+
+          while IFS='=' read -r key val || [[ -n "$key" ]]; do
+            # Skip comments and blank lines
+            [[ "$key" =~ ^[[:space:]]*[#!] || -z "$key" ]] && continue
+            key=$(echo "$key" | xargs)
+            val=$(echo "$val" | sed 's/\r$//' | xargs)
+
+            # Always override existing environment variable
+            echo "${key}=${val}" >> "$GITHUB_ENV"
+            echo "::notice::Imported $key"
+          done < "$file"
+          echo "::endgroup::"
+        done
+        echo "::endgroup::"
+
+        if (( error_found )); then
+          echo "::error::One or more properties files were missing: ${error_files[*]}"
+          exit 1
+        fi
+
+
+        echo "::notice::END IMPORTING PROPERTIES"
