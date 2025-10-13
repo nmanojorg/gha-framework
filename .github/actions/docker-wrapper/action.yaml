@@ -84,8 +84,7 @@ runs:
           GHA_CICD_DOCKER_CONTEXT: "${{ env.GHA_CICD_DOCKER_CONTEXT }}"
           GHA_CICD_DOCKER_BUILD_ARGS: "${{ env.GHA_CICD_DOCKER_BUILD_ARGS }}"
           GHA_CICD_DOCKER_PUSH_URLS: "${{ env.GHA_CICD_DOCKER_PUSH_URLS }}"
-          GHA_CICD_DOCKER_CONFIG_JSON: |-
-                   ${{ env.GHA_CICD_DOCKER_CONFIG_JSON }}
+          GHA_CICD_DOCKER_CONFIG_JSON: "${{ env.GHA_CICD_DOCKER_CONFIG_JSON }}"
         requiredInputs: |
           - run_lint
           - run_build
@@ -149,4 +148,5 @@ runs:
 
     - name: Publish (Docker)
       if: ${{ inputs.run_publish == 'true' }}
+
       uses: ./cicd-shared-lib/.github/actions/docker-wrapper/publish
