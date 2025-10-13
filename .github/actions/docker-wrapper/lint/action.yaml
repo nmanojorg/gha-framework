@@ -21,17 +21,17 @@ runs:
         fi
 
         echo "::group::Hadolint Version"
-        docker run --rm $HADOLINT_IMAGE hadolint --version | tee hadolint-report.txt
+        docker run --rm $HADOLINT_IMAGE hadolint --version | tee hadolint-report.txt 2>&1
         echo "::endgroup::"
 
         echo "::group::Linting Output"
         if [ -n "$CONFIG_PATH" ] && [ -f "$CONFIG_PATH" ]; then
-          docker run --rm -v "$GITHUB_WORKSPACE:/mnt" $HADOLINT_IMAGE hadolint --config "/mnt/$CONFIG_PATH" "/mnt/$DOCKERFILE" | tee -a hadolint-report.txt
+          docker run --rm -v "$GITHUB_WORKSPACE:/mnt" $HADOLINT_IMAGE hadolint --config "/mnt/$CONFIG_PATH" "/mnt/$DOCKERFILE" | tee -a hadolint-report.txt 2>&1
           echo "11111111111111111111111111"
           EXIT_CODE=$?
           echo $EXIT_CODE
         else
-          docker run --rm -v "$GITHUB_WORKSPACE:/mnt" $HADOLINT_IMAGE hadolint "/mnt/$DOCKERFILE" | tee -a hadolint-report.txt
+          docker run --rm -v "$GITHUB_WORKSPACE:/mnt" $HADOLINT_IMAGE hadolint "/mnt/$DOCKERFILE" | tee -a hadolint-report.txt 2>&1
           echo "2222222222222222222222"
           EXIT_CODE=$?
         fi
