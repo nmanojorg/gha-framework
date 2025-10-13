@@ -7,7 +7,6 @@ runs:
     - name: Hadolint Linting
       shell: bash
       run: |
-        set +e
         echo "::group::?? Hadolint Linting Start"
         DOCKERFILE="${GHA_CICD_DOCKERFILE_PATH:-Dockerfile}"
         CONFIG_PATH="${GHA_CICD_HADOLINT_CONFIG:-}"
@@ -21,30 +20,16 @@ runs:
         fi
 
         echo "::group::Hadolint Version"
-        docker run --rm $HADOLINT_IMAGE hadolint --version | tee hadolint-report.txt 2>&1
+        docker run --rm $HADOLINT_IMAGE hadolint --version | tee hadolint-report.txt
         echo "::endgroup::"
 
         echo "::group::Linting Output"
         if [ -n "$CONFIG_PATH" ] && [ -f "$CONFIG_PATH" ]; then
-          docker run --rm -v "$GITHUB_WORKSPACE:/mnt" $HADOLINT_IMAGE hadolint --config "/mnt/$CONFIG_PATH" "/mnt/$DOCKERFILE" | tee -a hadolint-report.txt 2>&1
-          echo "11111111111111111111111111"
-          EXIT_CODE=${PIPESTATUS[0]}
-          echo $EXIT_CODE
+          docker run --rm -v "$GITHUB_WORKSPACE:/mnt" $HADOLINT_IMAGE hadolint --config "/mnt/$CONFIG_PATH" "/mnt/$DOCKERFILE" | tee -a hadolint-report.txt
         else
-          docker run --rm -v "$GITHUB_WORKSPACE:/mnt" $HADOLINT_IMAGE hadolint "/mnt/$DOCKERFILE" | tee -a hadolint-report.txt 2>&1
-          echo "2222222222222222222222"
-          EXIT_CODE=${PIPESTATUS[0]}
+          docker run --rm -v "$GITHUB_WORKSPACE:/mnt" $HADOLINT_IMAGE hadolint "/mnt/$DOCKERFILE" | tee -a hadolint-report.txt
         fi
 
-        if [ "$EXIT_CODE" -eq 0 ]; then
-          echo "::notice::Hadolint passed with no errors."
-        else
-          echo "::error::Hadolint found errors in the Dockerfile."
-        fi
-        echo "::endgroup::"
-
-        echo "::group::?? Hadolint Report Preview"
-        head -20 hadolint-report.txt
         echo "::endgroup::"
         echo "::endgroup::?? Hadolint Linting End"
 
