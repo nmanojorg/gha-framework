@@ -1,20 +1,54 @@
 name: "Lint (Docker)"
-description: "Lint Dockerfile using Hadolint GitHub Action. All configuration comes from environment variables (GHA_CICD_ prefix), no action inputs."
+description: "Lint Dockerfile using Hadolint Docker image. All configuration/secrets via environment variables (GHA_CICD_ prefix). Groups output and uses GitHub logging functions for better visibility."
 
 runs:
   using: "composite"
   steps:
-    - name: Lint Dockerfile with Hadolint
-      uses: hadolint/hadolint-action@v3.1.0
-      with:
-        dockerfile: ${{ env.GHA_CICD_DOCKERFILE_PATH }}
-        config: ${{ env.GHA_CICD_HADOLINT_CONFIG }}
-        output-file: hadolint-report.json
-        format: json
+    - name: Hadolint Linting
+      shell: bash
+      run: |
+        echo "::group::?? Hadolint Linting Start"
+        DOCKERFILE="${GHA_CICD_DOCKERFILE_PATH:-Dockerfile}"
+        CONFIG_PATH="${GHA_CICD_HADOLINT_CONFIG:-}"
+        HADOLINT_IMAGE="${GHA_CICD_HADOLINT_IMAGE:-hadolint/hadolint:latest}"
+
+        echo "::notice::Dockerfile path: $DOCKERFILE"
+        if [ -n "$CONFIG_PATH" ]; then
+          echo "::notice::Hadolint config: $CONFIG_PATH"
+        else
+          echo "::warning::No Hadolint config file provided. Using default rules."
+        fi
+
+        echo "::group::Hadolint Version"
+        docker run --rm $HADOLINT_IMAGE hadolint --version | tee hadolint-report.txt
+        echo "::endgroup::"
+
+        echo "::group::Linting Output"
+        if [ -n "$CONFIG_PATH" ] && [ -f "$CONFIG_PATH" ]; then
+          docker run --rm -v "$GITHUB_WORKSPACE:/mnt" $HADOLINT_IMAGE hadolint --config "/mnt/$CONFIG_PATH" "/mnt/$DOCKERFILE" | tee -a hadolint-report.txt
+          EXIT_CODE=${PIPESTATUS[0]}
+        else
+          docker run --rm -v "$GITHUB_WORKSPACE:/mnt" $HADOLINT_IMAGE hadolint "/mnt/$DOCKERFILE" | tee -a hadolint-report.txt
+          EXIT_CODE=${PIPESTATUS[0]}
+        fi
+
+        if [ "$EXIT_CODE" -eq 0 ]; then
+          echo "::notice::Hadolint passed with no errors."
+        else
+          echo "::error::Hadolint found errors in the Dockerfile."
+        fi
+        echo "::endgroup::"
+
+        echo "::group::?? Hadolint Report Preview"
+        head -20 hadolint-report.txt
+        echo "::endgroup::"
+        echo "::endgroup::?? Hadolint Linting End"
+
+        exit $EXIT_CODE
 
     - name: Upload Hadolint Report
-      if: ${{ !cancelled() }}
       uses: actions/upload-artifact@v4
+      if: ${{ !cancelled() }}
       with:
         name: hadolint-report
-        path: hadolint-report.json
+        path: hadolint-report.txt
