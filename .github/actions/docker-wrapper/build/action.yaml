@@ -1,0 +1,22 @@
+    - name: Print Docker build environment (debug)
+      shell: bash
+      run: |
+        echo "::group::Docker Build Debug Info"
+        echo "GHA_CICD_DOCKER_CONTEXT: $GHA_CICD_DOCKER_CONTEXT"
+        echo "GHA_CICD_DOCKERFILE_PATH: $GHA_CICD_DOCKERFILE_PATH"
+        echo "GHA_CICD_DOCKER_IMAGE: $GHA_CICD_DOCKER_IMAGE"
+        echo "GHA_CICD_DOCKER_BUILD_ARGS: $GHA_CICD_DOCKER_BUILD_ARGS"
+        echo "GHA_CICD_DOCKER_CONFIG_JSON: $GHA_CICD_DOCKER_CONFIG_JSON"
+        echo "GHA_CICD_DOCKER_REGISTRY: $GHA_CICD_DOCKER_REGISTRY"
+        echo "GHA_CICD_DOCKER_PUSH_URLS: $GHA_CICD_DOCKER_PUSH_URLS"
+        echo "GHA_CICD_HADOLINT_CONFIG: $GHA_CICD_HADOLINT_CONFIG"
+        echo "Checking if Docker image is present locally..."
+        if docker image inspect "$GHA_CICD_DOCKER_IMAGE" > /dev/null 2>&1; then
+          echo "? Image $GHA_CICD_DOCKER_IMAGE exists locally."
+        else
+          echo "? Image $GHA_CICD_DOCKER_IMAGE NOT found locally."
+        fi
+        echo "Local images matching tag:"
+        docker images | grep "$(echo "$GHA_CICD_DOCKER_IMAGE" | cut -d':' -f1)" || echo "No images found with name."
+        env | grep GHA_CICD_ || true
+        echo "::endgroup::"
