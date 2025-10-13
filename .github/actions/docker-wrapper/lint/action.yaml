@@ -28,11 +28,12 @@ runs:
         if [ -n "$CONFIG_PATH" ] && [ -f "$CONFIG_PATH" ]; then
           docker run --rm -v "$GITHUB_WORKSPACE:/mnt" $HADOLINT_IMAGE hadolint --config "/mnt/$CONFIG_PATH" "/mnt/$DOCKERFILE" | tee -a hadolint-report.txt
           echo "11111111111111111111111111"
-          EXIT_CODE=${PIPESTATUS[0]}
+          EXIT_CODE=$?
+          echo $EXIT_CODE
         else
           docker run --rm -v "$GITHUB_WORKSPACE:/mnt" $HADOLINT_IMAGE hadolint "/mnt/$DOCKERFILE" | tee -a hadolint-report.txt
           echo "2222222222222222222222"
-          EXIT_CODE=${PIPESTATUS[0]}
+          EXIT_CODE=$?
         fi
 
         if [ "$EXIT_CODE" -eq 0 ]; then
