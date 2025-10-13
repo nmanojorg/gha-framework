@@ -6,29 +6,8 @@ runs:
   steps:
     - name: Prepare Docker build arguments
       id: buildargs
-      shell: bash
-      run: |
-        echo "::group::Preparing Docker build arguments"
-        ARGS=()
-        # Add build args from file if provided
-        if [[ -n "$GHA_CICD_DOCKER_BUILD_ARGS_FILE" && -f "$GHA_CICD_DOCKER_BUILD_ARGS_FILE" ]]; then
-          while IFS= read -r line; do
-            [[ -n "$line" ]] && ARGS+=("$line")
-          done < "$GHA_CICD_DOCKER_BUILD_ARGS_FILE"
-        fi
-        # Add build args from environment variable if provided
-        if [[ -n "$GHA_CICD_DOCKER_BUILD_ARGS" ]]; then
-          for arg in $GHA_CICD_DOCKER_BUILD_ARGS; do
-            ARGS+=("$arg")
-          done
-        fi
-        # Output as multi-line string (YAML list)
-        {
-          echo "BUILD_ARGS<<EOF"
-          for a in "${ARGS[@]}"; do echo "$a"; done
-          echo "EOF"
-        } >> "$GITHUB_OUTPUT"
-        echo "::endgroup::"
+      shell: python
+      run: python $GITHUB_ACTION_PATH/prepare_build_args.py
 
     - name: Print Docker build environment (debug)
       shell: bash
