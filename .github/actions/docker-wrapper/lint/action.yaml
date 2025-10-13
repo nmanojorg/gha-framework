@@ -7,6 +7,7 @@ runs:
     - name: Hadolint Linting
       shell: bash
       run: |
+        set -e
         echo "::group::?? Hadolint Linting Start"
         DOCKERFILE="${GHA_CICD_DOCKERFILE_PATH:-Dockerfile}"
         CONFIG_PATH="${GHA_CICD_HADOLINT_CONFIG:-}"
