@@ -55,15 +55,15 @@ runs:
       shell: bash
       run: echo "CICD_SHARED_LIB_EXISTS=true" >> $GITHUB_ENV
 
-    #- name: Import Common Properties
-    #  uses: ./cicd-shared-lib/.github/actions/utils/import-properties
-    #  with:
-    #    files: ./cicd-shared-lib/.github/actions/utils/properties/common.properties
+    - name: Import Common Properties
+      uses: ./cicd-shared-lib/.github/actions/utils/import-properties
+      with:
+        files: ./cicd-shared-lib/.github/actions/utils/properties/common.properties
 
-    #- name: Import Docker Properties
-    #  uses: ./cicd-shared-lib/.github/actions/utils/import-properties
-    #  with:
-    #    files: ./cicd-shared-lib/.github/actions/docker-wrapper/properties/docker.properties
+    - name: Import Docker Properties
+      uses: ./cicd-shared-lib/.github/actions/utils/import-properties
+      with:
+        files: $GITHUB_ACTION_PATH/properties/docker.properties
 
     - name: Import Project Properties (if provided)
       if: ${{ inputs.properties_path != '' }}
@@ -80,13 +80,12 @@ runs:
           run_test: "${{ inputs.run_test }}"
           run_scan: "${{ inputs.run_scan }}"
           run_publish: "${{ inputs.run_publish }}"
-          # Example docker env vars (these must be set by the workflow, not as action inputs)
           GHA_CICD_DOCKER_IMAGE: "${{ env.GHA_CICD_DOCKER_IMAGE }}"
-          GHA_CICD_DOCKER_REGISTRY: "${{ env.GHA_CICD_DOCKER_REGISTRY }}"
           GHA_CICD_DOCKERFILE_PATH: "${{ env.GHA_CICD_DOCKERFILE_PATH }}"
           GHA_CICD_DOCKER_CONTEXT: "${{ env.GHA_CICD_DOCKER_CONTEXT }}"
           GHA_CICD_DOCKER_BUILD_ARGS: "${{ env.GHA_CICD_DOCKER_BUILD_ARGS }}"
           GHA_CICD_DOCKER_PUSH_URLS: "${{ env.GHA_CICD_DOCKER_PUSH_URLS }}"
+          GHA_CICD_DOCKER_CONFIG_JSON: "${{ env.GHA_CICD_DOCKER_CONFIG_JSON }}"
           GHA_CICD_DOCKER_SCAN_CONFIG: "${{ env.GHA_CICD_DOCKER_SCAN_CONFIG }}"
         requiredInputs: |
           - run_lint
@@ -95,12 +94,12 @@ runs:
           - run_scan
           - run_publish
           - GHA_CICD_DOCKER_IMAGE
-          - GHA_CICD_DOCKER_REGISTRY
           - GHA_CICD_DOCKERFILE_PATH
           - GHA_CICD_DOCKER_CONTEXT
         optionalInputs: |
           - GHA_CICD_DOCKER_BUILD_ARGS
           - GHA_CICD_DOCKER_PUSH_URLS
+          - GHA_CICD_DOCKER_CONFIG_JSON
           - GHA_CICD_DOCKER_SCAN_CONFIG
         filesPathInputs: |
           - GHA_CICD_DOCKERFILE_PATH
@@ -113,12 +112,22 @@ runs:
             - run_publish
           string:
             - GHA_CICD_DOCKER_IMAGE
-            - GHA_CICD_DOCKER_REGISTRY
             - GHA_CICD_DOCKERFILE_PATH
             - GHA_CICD_DOCKER_CONTEXT
             - GHA_CICD_DOCKER_BUILD_ARGS
             - GHA_CICD_DOCKER_PUSH_URLS
+            - GHA_CICD_DOCKER_CONFIG_JSON
             - GHA_CICD_DOCKER_SCAN_CONFIG
+        dependencyValidations: |
+          run_publish:
+            expectedValue: "true"
+            dependentInputs:
+              - GHA_CICD_DOCKER_PUSH_URLS
+              - GHA_CICD_DOCKER_CONFIG_JSON
+          run_scan:
+            expectedValue: "true"
+            dependentInputs:
+              - GHA_CICD_DOCKER_SCAN_CONFIG
 
     - name: Lint (Docker)
       if: ${{ inputs.run_lint == 'true' }}

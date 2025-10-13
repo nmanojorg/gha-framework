@@ -28,6 +28,9 @@ runs:
         file: ${{ env.GHA_CICD_DOCKERFILE_PATH }}
         tags: ${{ env.GHA_CICD_DOCKER_IMAGE }}
         build-args: ${{ steps.buildargs.outputs.BUILD_ARGS }}
+        outputs: |
+          type=docker
+          type=tar,dest=image.tar
         push: false
         load: true
 
@@ -47,7 +50,7 @@ runs:
       shell: bash
       run: |
         echo "::group::Saving Docker image as image.tar"
-        docker save -o image.tar "$GHA_CICD_DOCKER_IMAGE"
+        #docker save -o image.tar "$GHA_CICD_DOCKER_IMAGE"
         echo "Docker image saved to image.tar"
         echo "::endgroup::"
 

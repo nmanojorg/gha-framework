@@ -12,11 +12,11 @@ runs:
         CONFIG_PATH="${GHA_CICD_HADOLINT_CONFIG:-}"
         HADOLINT_IMAGE="${GHA_CICD_HADOLINT_IMAGE:-hadolint/hadolint:latest}"
 
-        echo "::notice::Dockerfile path: $DOCKERFILE"
+        echo "Dockerfile path: $DOCKERFILE"
         if [ -n "$CONFIG_PATH" ]; then
-          echo "::notice::Hadolint config: $CONFIG_PATH"
+          echo "Hadolint config: $CONFIG_PATH"
         else
-          echo "::warning::No Hadolint config file provided. Using default rules."
+          echo "No Hadolint config file provided. Using default rules."
         fi
 
         echo "::group::Hadolint Version"
