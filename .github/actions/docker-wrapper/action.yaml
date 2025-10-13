@@ -55,15 +55,15 @@ runs:
       shell: bash
       run: echo "CICD_SHARED_LIB_EXISTS=true" >> $GITHUB_ENV
 
-    - name: Import Common Properties
-      uses: ./cicd-shared-lib/.github/actions/utils/import-properties
-      with:
-        files: ./cicd-shared-lib/.github/actions/utils/properties/common.properties
+    #- name: Import Common Properties
+    #  uses: ./cicd-shared-lib/.github/actions/utils/import-properties
+    #  with:
+    #    files: ./cicd-shared-lib/.github/actions/utils/properties/common.properties
 
-    - name: Import Docker Properties
-      uses: ./cicd-shared-lib/.github/actions/utils/import-properties
-      with:
-        files: ./cicd-shared-lib/.github/actions/docker-wrapper/properties/docker.properties
+    #- name: Import Docker Properties
+    #  uses: ./cicd-shared-lib/.github/actions/utils/import-properties
+    #  with:
+    #    files: ./cicd-shared-lib/.github/actions/docker-wrapper/properties/docker.properties
 
     - name: Import Project Properties (if provided)
       if: ${{ inputs.properties_path != '' }}
