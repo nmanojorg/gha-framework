@@ -80,27 +80,23 @@ runs:
           run_test: "${{ inputs.run_test }}"
           run_scan: "${{ inputs.run_scan }}"
           run_publish: "${{ inputs.run_publish }}"
-          GHA_CICD_DOCKER_IMAGE: "${{ env.GHA_CICD_DOCKER_IMAGE }}"
           GHA_CICD_DOCKERFILE_PATH: "${{ env.GHA_CICD_DOCKERFILE_PATH }}"
           GHA_CICD_DOCKER_CONTEXT: "${{ env.GHA_CICD_DOCKER_CONTEXT }}"
           GHA_CICD_DOCKER_BUILD_ARGS: "${{ env.GHA_CICD_DOCKER_BUILD_ARGS }}"
           GHA_CICD_DOCKER_PUSH_URLS: "${{ env.GHA_CICD_DOCKER_PUSH_URLS }}"
           GHA_CICD_DOCKER_CONFIG_JSON: "${{ env.GHA_CICD_DOCKER_CONFIG_JSON }}"
-          GHA_CICD_DOCKER_SCAN_CONFIG: "${{ env.GHA_CICD_DOCKER_SCAN_CONFIG }}"
         requiredInputs: |
           - run_lint
           - run_build
           - run_test
           - run_scan
           - run_publish
-          - GHA_CICD_DOCKER_IMAGE
           - GHA_CICD_DOCKERFILE_PATH
           - GHA_CICD_DOCKER_CONTEXT
         optionalInputs: |
           - GHA_CICD_DOCKER_BUILD_ARGS
           - GHA_CICD_DOCKER_PUSH_URLS
           - GHA_CICD_DOCKER_CONFIG_JSON
-          - GHA_CICD_DOCKER_SCAN_CONFIG
         filesPathInputs: |
           - GHA_CICD_DOCKERFILE_PATH
         typeValidations: |
@@ -111,23 +107,18 @@ runs:
             - run_scan
             - run_publish
           string:
-            - GHA_CICD_DOCKER_IMAGE
             - GHA_CICD_DOCKERFILE_PATH
             - GHA_CICD_DOCKER_CONTEXT
             - GHA_CICD_DOCKER_BUILD_ARGS
             - GHA_CICD_DOCKER_PUSH_URLS
             - GHA_CICD_DOCKER_CONFIG_JSON
-            - GHA_CICD_DOCKER_SCAN_CONFIG
         dependencyValidations: |
           run_publish:
             expectedValue: "true"
             dependentInputs:
               - GHA_CICD_DOCKER_PUSH_URLS
               - GHA_CICD_DOCKER_CONFIG_JSON
-          run_scan:
-            expectedValue: "true"
-            dependentInputs:
-              - GHA_CICD_DOCKER_SCAN_CONFIG
+
 
 
     - name: Lint (Docker)
