@@ -191,6 +191,7 @@ if __name__ == "__main__":
     print("***** Start Input Validation (YAML ONLY) *****")
     group("YAML Input Loading")
     try:
+        print(os.environ.get('INPUT_ACTIONINPUTS', ''))
         inputs = yaml.safe_load(os.environ.get('INPUT_ACTIONINPUTS', '')) or {}
         print("Loaded actionInputs:", inputs)
     except Exception as e:
