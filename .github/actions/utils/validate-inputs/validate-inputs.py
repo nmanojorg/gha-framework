@@ -1,7 +1,6 @@
 import os
 import sys
 import yaml
-import json
 
 def group(name):
     print(f"::group::{name}")
@@ -189,19 +188,14 @@ def process_dependency_validations(inputs, dependency_validations):
 
 if __name__ == "__main__":
 
-    print("***** Start Input Validation (JSON/YAML) *****")
-    group("Input Loading")
+    print("***** Start Input Validation (YAML ONLY) *****")
+    group("YAML Input Loading")
     try:
-        raw_input = os.environ.get('INPUT_ACTIONINPUTS', '')
-        print(raw_input)
-        try:
-            inputs = json.loads(raw_input)
-            print("Loaded actionInputs as JSON:", inputs)
-        except Exception:
-            inputs = yaml.safe_load(raw_input) or {}
-            print("Loaded actionInputs as YAML:", inputs)
+        print(os.environ.get('INPUT_ACTIONINPUTS', ''))
+        inputs = yaml.safe_load(os.environ.get('INPUT_ACTIONINPUTS', '')) or {}
+        print("Loaded actionInputs:", inputs)
     except Exception as e:
-        print(f"? Failed to parse INPUT_ACTIONINPUTS as JSON or YAML: {e}")
+        print(f"? Failed to parse YAML from INPUT_ACTIONINPUTS: {e}")
         endgroup()
         sys.exit(1)
     endgroup()

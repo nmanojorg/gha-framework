@@ -55,55 +55,71 @@ runs:
       shell: bash
       run: echo "CICD_SHARED_LIB_EXISTS=true" >> $GITHUB_ENV
 
+    - name: Import Common Properties
+      uses: ./cicd-shared-lib/.github/actions/utils/import-properties
+      with:
+        files: ./cicd-shared-lib/.github/actions/utils/properties/common.properties
+
+    - name: Import Docker Properties
+      uses: ./cicd-shared-lib/.github/actions/utils/import-properties
+      with:
+        files: ./cicd-shared-lib/.github/actions/docker-wrapper/properties/docker.properties
+
+    - name: Import Project Properties (if provided)
+      if: ${{ inputs.properties_path != '' }}
+      uses: ./cicd-shared-lib/.github/actions/utils/import-properties
+      with:
+        files: ${{ inputs.properties_path }}
+
     - name: Validate Inputs and Environment
       uses: ./cicd-shared-lib/.github/actions/utils/validate-inputs
       with:
         actionInputs: |
-          {
-            "run_lint": "${{ inputs.run_lint }}",
-            "run_build": "${{ inputs.run_build }}",
-            "run_test": "${{ inputs.run_test }}",
-            "run_scan": "${{ inputs.run_scan }}",
-            "run_publish": "${{ inputs.run_publish }}",
-            "GHA_CICD_DOCKERFILE_PATH": "${{ env.GHA_CICD_DOCKERFILE_PATH }}",
-            "GHA_CICD_DOCKER_CONTEXT": "${{ env.GHA_CICD_DOCKER_CONTEXT }}",
-            "GHA_CICD_DOCKER_BUILD_ARGS": "${{ env.GHA_CICD_DOCKER_BUILD_ARGS }}",
-            "GHA_CICD_DOCKER_PUSH_URLS": "${{ env.GHA_CICD_DOCKER_PUSH_URLS }}",
-            "GHA_CICD_DOCKER_CONFIG_JSON": "${{ replace(env.GHA_CICD_DOCKER_CONFIG_JSON, '\n', '') }}"
-          }
+          run_lint: "${{ inputs.run_lint }}"
+          run_build: "${{ inputs.run_build }}"
+          run_test: "${{ inputs.run_test }}"
+          run_scan: "${{ inputs.run_scan }}"
+          run_publish: "${{ inputs.run_publish }}"
+          GHA_CICD_DOCKERFILE_PATH: "${{ env.GHA_CICD_DOCKERFILE_PATH }}"
+          GHA_CICD_DOCKER_CONTEXT: "${{ env.GHA_CICD_DOCKER_CONTEXT }}"
+          GHA_CICD_DOCKER_BUILD_ARGS: "${{ env.GHA_CICD_DOCKER_BUILD_ARGS }}"
+          GHA_CICD_DOCKER_PUSH_URLS: "${{ env.GHA_CICD_DOCKER_PUSH_URLS }}"
+          GHA_CICD_DOCKER_CONFIG_JSON: "${{ env.GHA_CICD_DOCKER_CONFIG_JSON }}"
         requiredInputs: |
-          - "run_lint"
-          - "run_build"
-          - "run_test"
-          - "run_scan"
-          - "run_publish"
-          - "GHA_CICD_DOCKERFILE_PATH"
-          - "GHA_CICD_DOCKER_CONTEXT"
+          - run_lint
+          - run_build
+          - run_test
+          - run_scan
+          - run_publish
+          - GHA_CICD_DOCKERFILE_PATH
+          - GHA_CICD_DOCKER_CONTEXT
         optionalInputs: |
-          - "GHA_CICD_DOCKER_BUILD_ARGS"
-          - "GHA_CICD_DOCKER_PUSH_URLS"
-          - "GHA_CICD_DOCKER_CONFIG_JSON"
+          - GHA_CICD_DOCKER_BUILD_ARGS
+          - GHA_CICD_DOCKER_PUSH_URLS
+          - GHA_CICD_DOCKER_CONFIG_JSON
         filesPathInputs: |
-          - "GHA_CICD_DOCKERFILE_PATH"
+          - GHA_CICD_DOCKERFILE_PATH
         typeValidations: |
           booleanString:
-            - "run_lint"
-            - "run_build"
-            - "run_test"
-            - "run_scan"
-            - "run_publish"
+            - run_lint
+            - run_build
+            - run_test
+            - run_scan
+            - run_publish
           string:
-            - "GHA_CICD_DOCKERFILE_PATH"
-            - "GHA_CICD_DOCKER_CONTEXT"
-            - "GHA_CICD_DOCKER_BUILD_ARGS"
-            - "GHA_CICD_DOCKER_PUSH_URLS"
-            - "GHA_CICD_DOCKER_CONFIG_JSON"
+            - GHA_CICD_DOCKERFILE_PATH
+            - GHA_CICD_DOCKER_CONTEXT
+            - GHA_CICD_DOCKER_BUILD_ARGS
+            - GHA_CICD_DOCKER_PUSH_URLS
+            - GHA_CICD_DOCKER_CONFIG_JSON
         dependencyValidations: |
           run_publish:
             expectedValue: "true"
             dependentInputs:
-              - "GHA_CICD_DOCKER_PUSH_URLS"
-              - "GHA_CICD_DOCKER_CONFIG_JSON"
+              - GHA_CICD_DOCKER_PUSH_URLS
+              - GHA_CICD_DOCKER_CONFIG_JSON
+
+
 
     - name: Lint (Docker)
       if: ${{ inputs.run_lint == 'true' }}
@@ -132,4 +148,5 @@ runs:
 
     - name: Publish (Docker)
       if: ${{ inputs.run_publish == 'true' }}
+
       uses: ./cicd-shared-lib/.github/actions/docker-wrapper/publish
