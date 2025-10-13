@@ -59,11 +59,7 @@ runs:
       run: |
         echo "::group::Docker image archive debug"
         ls -lh image.tar
-        echo "sha256sum:"
-        sha256sum image.tar || shasum -a 256 image.tar || true
-        echo "Tar file details:"
-        tar -tvf image.tar | head -20 || echo "Not a tar file or cannot list contents"
-        echo "::endgroup::"
+        docker images
 
     - name: Upload Docker image archive
       uses: actions/upload-artifact@v4
