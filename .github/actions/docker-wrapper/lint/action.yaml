@@ -1,0 +1,19 @@
+name: "Lint (Docker)"
+description: "Lint Dockerfile using Hadolint GitHub Action. All configuration comes from environment variables (GHA_CICD_ prefix), no action inputs."
+
+runs:
+  using: "composite"
+  steps:
+    - name: Lint Dockerfile with Hadolint
+      uses: hadolint/hadolint-action@v3.1.0
+      with:
+        dockerfile: ${{ env.GHA_CICD_DOCKERFILE_PATH }}
+        config: ${{ env.GHA_CICD_HADOLINT_CONFIG }}
+        output-file: hadolint-report.json
+        format: json
+
+    - name: Upload Hadolint Report
+      uses: actions/upload-artifact@v4
+      with:
+        name: hadolint-report
+        path: hadolint-report.json
