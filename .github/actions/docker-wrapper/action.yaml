@@ -63,7 +63,7 @@ runs:
     - name: Import Docker Properties
       uses: ./cicd-shared-lib/.github/actions/utils/import-properties
       with:
-        files: $GITHUB_ACTION_PATH/properties/docker.properties
+        files: ./cicd-shared-lib/.github/actions/docker-wrapper/properties/docker.properties
 
     - name: Import Project Properties (if provided)
       if: ${{ inputs.properties_path != '' }}
