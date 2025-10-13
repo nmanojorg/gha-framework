@@ -69,7 +69,7 @@ runs:
             "GHA_CICD_DOCKER_CONTEXT": "${{ env.GHA_CICD_DOCKER_CONTEXT }}",
             "GHA_CICD_DOCKER_BUILD_ARGS": "${{ env.GHA_CICD_DOCKER_BUILD_ARGS }}",
             "GHA_CICD_DOCKER_PUSH_URLS": "${{ env.GHA_CICD_DOCKER_PUSH_URLS }}",
-            "GHA_CICD_DOCKER_CONFIG_JSON": "${{ env.GHA_CICD_DOCKER_CONFIG_JSON }}"
+            "GHA_CICD_DOCKER_CONFIG_JSON": "${{ env.GHA_CICD_DOCKER_CONFIG_JSON != '' }}"
           }
         requiredInputs: |
           - "run_lint"
