@@ -1,3 +1,9 @@
+name: "Docker Build (Local Registry & Save Archive)"
+description: "Builds Docker image for local registry, saves as image.tar archive, and prints debug info."
+
+runs:
+  using: "composite"
+  steps:
     - name: Print Docker build environment (debug)
       shell: bash
       run: |
@@ -10,7 +16,26 @@
         echo "GHA_CICD_DOCKER_REGISTRY: $GHA_CICD_DOCKER_REGISTRY"
         echo "GHA_CICD_DOCKER_PUSH_URLS: $GHA_CICD_DOCKER_PUSH_URLS"
         echo "GHA_CICD_HADOLINT_CONFIG: $GHA_CICD_HADOLINT_CONFIG"
-        echo "Checking if Docker image is present locally..."
+        env | grep GHA_CICD_ || true
+        echo "::endgroup::"
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build Docker image with Buildx
+      uses: docker/build-push-action@v5
+      with:
+        context: ${{ env.GHA_CICD_DOCKER_CONTEXT || '.' }}
+        file: ${{ env.GHA_CICD_DOCKERFILE_PATH || 'Dockerfile' }}
+        tags: ${{ env.GHA_CICD_DOCKER_IMAGE || 'localhost:5000/localimage:latest' }}
+        build-args: ${{ env.GHA_CICD_DOCKER_BUILD_ARGS }}
+        push: false
+        load: true
+
+    - name: Check Docker image existence (debug)
+      shell: bash
+      run: |
+        echo "::group::Checking Docker image existence"
         if docker image inspect "$GHA_CICD_DOCKER_IMAGE" > /dev/null 2>&1; then
           echo "? Image $GHA_CICD_DOCKER_IMAGE exists locally."
         else
@@ -18,5 +43,30 @@
         fi
         echo "Local images matching tag:"
         docker images | grep "$(echo "$GHA_CICD_DOCKER_IMAGE" | cut -d':' -f1)" || echo "No images found with name."
-        env | grep GHA_CICD_ || true
         echo "::endgroup::"
+
+    - name: Save Docker image as tar archive
+      shell: bash
+      run: |
+        echo "::group::Saving Docker image as image.tar"
+        docker images
+        docker save -o image.tar "$GHA_CICD_DOCKER_IMAGE"
+        echo "Docker image saved to image.tar"
+        echo "::endgroup::"
+
+    - name: Print tar archive debug info
+      shell: bash
+      run: |
+        echo "::group::Docker image archive debug"
+        ls -lh image.tar
+        echo "sha256sum:"
+        sha256sum image.tar || shasum -a 256 image.tar || true
+        echo "Tar file details:"
+        tar -tvf image.tar | head -20 || echo "Not a tar file or cannot list contents"
+        echo "::endgroup::"
+
+    - name: Upload Docker image archive
+      uses: actions/upload-artifact@v4
+      with:
+        name: docker-image-archive
+        path: image.tar
