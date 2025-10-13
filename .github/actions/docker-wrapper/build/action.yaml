@@ -4,20 +4,6 @@ description: "Builds Docker image for local registry, saves as image.tar archive
 runs:
   using: "composite"
   steps:
-    - name: Print Docker build environment (debug)
-      shell: bash
-      run: |
-        echo "::group::Docker Build Debug Info"
-        echo "GHA_CICD_DOCKER_CONTEXT: $GHA_CICD_DOCKER_CONTEXT"
-        echo "GHA_CICD_DOCKERFILE_PATH: $GHA_CICD_DOCKERFILE_PATH"
-        echo "GHA_CICD_DOCKER_IMAGE: $GHA_CICD_DOCKER_IMAGE"
-        echo "GHA_CICD_DOCKER_BUILD_ARGS: $GHA_CICD_DOCKER_BUILD_ARGS"
-        echo "GHA_CICD_DOCKER_CONFIG_JSON: $GHA_CICD_DOCKER_CONFIG_JSON"
-        echo "GHA_CICD_DOCKER_REGISTRY: $GHA_CICD_DOCKER_REGISTRY"
-        echo "GHA_CICD_DOCKER_PUSH_URLS: $GHA_CICD_DOCKER_PUSH_URLS"
-        echo "GHA_CICD_HADOLINT_CONFIG: $GHA_CICD_HADOLINT_CONFIG"
-        env | grep GHA_CICD_ || true
-        echo "::endgroup::"
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
@@ -25,25 +11,12 @@ runs:
     - name: Build Docker image with Buildx
       uses: docker/build-push-action@v5
       with:
-        context: ${{ env.GHA_CICD_DOCKER_CONTEXT || '.' }}
-        file: ${{ env.GHA_CICD_DOCKERFILE_PATH || 'Dockerfile' }}
-        tags: ${{ env.GHA_CICD_DOCKER_IMAGE || 'localhost:5000/localimage:latest' }}
+        context: ${{ env.GHA_CICD_DOCKER_CONTEXT }}
+        file: ${{ env.GHA_CICD_DOCKERFILE_PATH }}
+        tags: ${{ env.GHA_CICD_DOCKER_IMAGE }}
         build-args: ${{ env.GHA_CICD_DOCKER_BUILD_ARGS }}
         push: false
         load: true
-
-    - name: Check Docker image existence (debug)
-      shell: bash
-      run: |
-        echo "::group::Checking Docker image existence"
-        if docker image inspect "$GHA_CICD_DOCKER_IMAGE" > /dev/null 2>&1; then
-          echo "? Image $GHA_CICD_DOCKER_IMAGE exists locally."
-        else
-          echo "? Image $GHA_CICD_DOCKER_IMAGE NOT found locally."
-        fi
-        echo "Local images matching tag:"
-        docker images | grep "$(echo "$GHA_CICD_DOCKER_IMAGE" | cut -d':' -f1)" || echo "No images found with name."
-        echo "::endgroup::"
 
     - name: Save Docker image as tar archive
       shell: bash
@@ -53,16 +26,3 @@ runs:
         docker save -o image.tar "$GHA_CICD_DOCKER_IMAGE"
         echo "Docker image saved to image.tar"
         echo "::endgroup::"
-
-    - name: Print tar archive debug info
-      shell: bash
-      run: |
-        echo "::group::Docker image archive debug"
-        ls -lh image.tar
-        docker images
-
-    - name: Upload Docker image archive
-      uses: actions/upload-artifact@v4
-      with:
-        name: docker-image-archive
-        path: image.tar
