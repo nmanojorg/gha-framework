@@ -26,7 +26,7 @@ runs:
       with:
         context: ${{ env.GHA_CICD_DOCKER_CONTEXT }}
         file: ${{ env.GHA_CICD_DOCKERFILE_PATH }}
-        tags: ${{ env.GHA_CICD_DOCKER_IMAGE }}
+        tags: ${{ env.GHA_CICD_DOCKER_PUSH_URLS }}
         build-args: ${{ steps.buildargs.outputs.BUILD_ARGS }}
         outputs: |
           type=docker
@@ -38,19 +38,19 @@ runs:
       shell: bash
       run: |
         echo "::group::Checking Docker image existence"
-        if docker image inspect "$GHA_CICD_DOCKER_IMAGE" > /dev/null 2>&1; then
-          echo "? Image $GHA_CICD_DOCKER_IMAGE exists locally."
+        if docker image inspect "$GHA_CICD_DOCKER_PUSH_URLS" > /dev/null 2>&1; then
+          echo "? Image $GHA_CICD_DOCKER_PUSH_URLS exists locally."
         else
-          echo "? Image $GHA_CICD_DOCKER_IMAGE NOT found locally."
+          echo "? Image $GHA_CICD_DOCKER_PUSH_URLS NOT found locally."
         fi
-        docker images | grep "$(echo "$GHA_CICD_DOCKER_IMAGE" | cut -d':' -f1)" || echo "No images found with name."
+        docker images | grep "$(echo "$GHA_CICD_DOCKER_PUSH_URLS" | cut -d':' -f1)" || echo "No images found with name."
         echo "::endgroup::"
 
     - name: Save Docker image as tar archive
       shell: bash
       run: |
         echo "::group::Saving Docker image as image.tar"
-        #docker save -o image.tar "$GHA_CICD_DOCKER_IMAGE"
+        #docker save -o image.tar "$GHA_CICD_DOCKER_PUSH_URLS"
         echo "Docker image saved to image.tar"
         echo "::endgroup::"
 
