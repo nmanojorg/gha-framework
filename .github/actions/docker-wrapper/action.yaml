@@ -129,6 +129,7 @@ runs:
             dependentInputs:
               - GHA_CICD_DOCKER_SCAN_CONFIG
 
+
     - name: Lint (Docker)
       if: ${{ inputs.run_lint == 'true' }}
       uses: ./cicd-shared-lib/.github/actions/docker-wrapper/lint
