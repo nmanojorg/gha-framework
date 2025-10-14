@@ -21,7 +21,7 @@ runs:
 
         IMAGE_URLS="${GHA_CICD_DOCKER_IMAGE_URLS}"
         DOCKERFILE_PATH="${GHA_CICD_DOCKERFILE_PATH}"
-        DOCKER_CONTEXT="${GHA_CICD_DOCKER_CONTEXT}"
+        DOCKER_CONTEXT="${GHA_CICD_DOCKER_CONTEXT:-.}"
         PLATFORMS="${GHA_CICD_DOCKER_PLATFORMS}"
 
         build_image() {
@@ -30,10 +30,7 @@ runs:
           local platform_key="$3"
 
           export PLATFORM_KEY="$platform_key"
-          echo "::group::Build Arguments"
-          BUILD_ARG_OPTIONS=$(python3 "$GITHUB_ACTION_PATH/prepare_build_args.py")
-          echo "[INFO] BUILD_ARG_OPTIONS: $BUILD_ARG_OPTIONS"
-          echo "::endgroup::"
+          BUILD_ARG_OPTIONS=$(python3 "$GITHUB_ACTION_PATH/prepare_build_args.py" | tail -n 1)
 
           local image_tag="$image_url"
           if [ -n "$platform_key" ]; then
@@ -46,6 +43,8 @@ runs:
           else
             echo "::group::Building $image_tag (default platform)"
           fi
+
+          echo "[INFO] docker buildx build --platform \"$platform\" --file \"$DOCKERFILE_PATH\" $BUILD_ARG_OPTIONS -t \"$image_tag\" --output type=tar,dest=\"$tar_file\" --push=false --load \"$DOCKER_CONTEXT\""
 
           docker buildx build \
             ${platform:+--platform "$platform"} \
@@ -66,7 +65,6 @@ runs:
             build_image "$image_url" "" ""
           done
         else
-          # Split platforms by comma, trim spaces, and ignore empty entries
           IFS=',' read -ra platform_list <<< "$PLATFORMS"
           for raw_platform in "${platform_list[@]}"; do
             platform="$(echo "$raw_platform" | xargs)"
