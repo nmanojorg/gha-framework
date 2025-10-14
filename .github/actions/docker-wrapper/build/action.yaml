@@ -4,19 +4,30 @@ description: "Builds Docker images for multiple platforms and image URLs using e
 runs:
   using: "composite"
   steps:
-    - name: Prepare Docker build arguments for each platform and image
+    - name: Debug Docker Build Settings
       shell: bash
       run: |
         echo "::group::[DEBUG] Docker Build Multi-Arch/Multi-Image"
-        echo "[DEBUG] PLATFORMS: ${GHA_CICD_DOCKER_PLATFORMS:-linux/amd64}"
-        echo "[DEBUG] IMAGE_URLS: ${GHA_CICD_DOCKER_IMAGE_URLS}"
-        echo "[DEBUG] DOCKERFILE_PATH: ${GHA_CICD_DOCKERFILE_PATH:-Dockerfile}"
-        echo "[DEBUG] DOCKER_CONTEXT: ${GHA_CICD_DOCKER_CONTEXT:-.}"
+        echo "[DEBUG] PLATFORMS env: '${GHA_CICD_DOCKER_PLATFORMS}'"
+        echo "[DEBUG] IMAGE_URLS env: '${GHA_CICD_DOCKER_IMAGE_URLS}'"
+        echo "[DEBUG] DOCKERFILE_PATH env: '${GHA_CICD_DOCKERFILE_PATH}'"
+        echo "[DEBUG] DOCKER_CONTEXT env: '${GHA_CICD_DOCKER_CONTEXT}'"
+        echo "::endgroup::"
 
+    - name: Build images for each platform and image
+      shell: bash
+      run: |
+        set -e
+        echo "::group::Docker Build Execution"
         PLATFORMS="${GHA_CICD_DOCKER_PLATFORMS:-linux/amd64}"
         IMAGE_URLS="${GHA_CICD_DOCKER_IMAGE_URLS}"
         DOCKERFILE_PATH="${GHA_CICD_DOCKERFILE_PATH:-Dockerfile}"
         DOCKER_CONTEXT="${GHA_CICD_DOCKER_CONTEXT:-.}"
+
+        echo "[DEBUG] Expanded PLATFORMS: $PLATFORMS"
+        echo "[DEBUG] Expanded IMAGE_URLS: $IMAGE_URLS"
+        echo "[DEBUG] Expanded DOCKERFILE_PATH: $DOCKERFILE_PATH"
+        echo "[DEBUG] Expanded DOCKER_CONTEXT: $DOCKER_CONTEXT"
 
         for platform in $(echo "$PLATFORMS" | tr ',' ' '); do
           platform_key="${platform//\//_}"
@@ -33,7 +44,6 @@ runs:
           echo "[DEBUG] BUILD_ARGS_FILE_VAR: $BUILD_ARGS_FILE_VAR"
           echo "[DEBUG] BUILD_ARGS_FILE: $BUILD_ARGS_FILE"
 
-          # Prepare build arguments file if exists
           ARGS_FILE_OPTION=""
           if [ -n "$BUILD_ARGS_FILE" ] && [ -f "$BUILD_ARGS_FILE" ]; then
             ARGS_FILE_OPTION="--build-arg-file $BUILD_ARGS_FILE"
