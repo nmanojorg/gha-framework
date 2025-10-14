@@ -69,12 +69,29 @@ runs:
           done
         fi
 
-    - name: Simple Debug - List images and tar files
+    - name: Simple Debug - Image Architecture
       shell: bash
       run: |
-        echo "::group::Simple Debug"
-        echo "Listing docker images:"
-        docker images | head -20
-        echo "Listing tar files in workspace:"
-        ls -lh *.tar || echo "No tar files found."
+        echo "::group::Simple Debug - Image Architecture"
+        IMAGE_URLS="${GHA_CICD_DOCKER_IMAGE_URLS}"
+        PLATFORMS="${GHA_CICD_DOCKER_PLATFORMS}"
+
+        if [ -z "$PLATFORMS" ]; then
+          for image_url in $IMAGE_URLS; do
+            echo "Image: $image_url"
+            docker image inspect "$image_url" --format='Architecture: {{.Architecture}}, OS: {{.Os}}' || echo "Image not found: $image_url"
+          done
+        else
+          IFS=',' read -ra platform_list <<< "$PLATFORMS"
+          for raw_platform in "${platform_list[@]}"; do
+            platform="$(echo "$raw_platform" | xargs)"
+            [ -z "$platform" ] && continue
+            platform_key="${platform//\//_}"
+            for image_url in $IMAGE_URLS; do
+              image_tag="${image_url}-${platform_key}"
+              echo "Image: $image_tag"
+              docker image inspect "$image_tag" --format='Architecture: {{.Architecture}}, OS: {{.Os}}' || echo "Image not found: $image_tag"
+            done
+          done
+        fi
         echo "::endgroup::"
