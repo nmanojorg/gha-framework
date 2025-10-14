@@ -68,3 +68,13 @@ runs:
             done
           done
         fi
+
+    - name: Simple Debug - List images and tar files
+      shell: bash
+      run: |
+        echo "::group::Simple Debug"
+        echo "Listing docker images:"
+        docker images | head -20
+        echo "Listing tar files in workspace:"
+        ls -lh *.tar || echo "No tar files found."
+        echo "::endgroup::"
