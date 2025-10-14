@@ -12,13 +12,6 @@ runs:
       run: |
         set -e
 
-        echo "::group::Docker Build Settings"
-        echo "[INFO] IMAGE_URLS: $GHA_CICD_DOCKER_IMAGE_URLS"
-        echo "[INFO] DOCKERFILE_PATH: $GHA_CICD_DOCKERFILE_PATH"
-        echo "[INFO] DOCKER_CONTEXT: $GHA_CICD_DOCKER_CONTEXT"
-        echo "[INFO] PLATFORMS: $GHA_CICD_DOCKER_PLATFORMS"
-        echo "::endgroup::"
-
         IMAGE_URLS="${GHA_CICD_DOCKER_IMAGE_URLS}"
         DOCKERFILE_PATH="${GHA_CICD_DOCKERFILE_PATH}"
         DOCKER_CONTEXT="${GHA_CICD_DOCKER_CONTEXT:-.}"

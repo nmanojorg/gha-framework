@@ -26,18 +26,13 @@ def get_args_from_env(env_args):
     return args
 
 if __name__ == "__main__":
-    print("::group::Build Args Parser (prepare_build_args.py)")
     platform_key = os.environ.get("PLATFORM_KEY", "")
     if platform_key:
         env_args = os.environ.get(f"GHA_CICD_DOCKER_BUILD_ARGS_{platform_key}", "")
         file_path = os.environ.get(f"GHA_CICD_DOCKER_BUILD_ARGS_FILE_{platform_key}", "")
-        print(f"[INFO] Using per-platform args for: {platform_key}")
     else:
         env_args = os.environ.get("GHA_CICD_DOCKER_BUILD_ARGS", "")
         file_path = os.environ.get("GHA_CICD_DOCKER_BUILD_ARGS_FILE", "")
-        print("[INFO] Using generic build args (no platform specified)")
     build_args = get_args_from_file(file_path) + get_args_from_env(env_args)
-    print(f"[INFO] Parsed build args: {' '.join(build_args)}")
-    print("::endgroup::")
     if build_args:
         print(" ".join(build_args))
