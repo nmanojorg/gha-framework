@@ -1,5 +1,5 @@
 name: "Docker Build (Multi-Arch, Multi-Image)"
-description: "Builds Docker images for multiple platforms and image URLs using env vars only."
+description: "Builds Docker images for multiple platforms and image URLs using env vars only, with support for per-platform Dockerfiles."
 
 runs:
   using: "composite"
@@ -13,7 +13,6 @@ runs:
         set -e
 
         IMAGE_URLS="${GHA_CICD_DOCKER_IMAGE_URLS}"
-        DOCKERFILE_PATH="${GHA_CICD_DOCKERFILE_PATH}"
         DOCKER_CONTEXT="${GHA_CICD_DOCKER_CONTEXT:-.}"
         PLATFORMS="${GHA_CICD_DOCKER_PLATFORMS}"
 
@@ -24,6 +23,14 @@ runs:
 
           export PLATFORM_KEY="$platform_key"
           BUILD_ARG_OPTIONS=$(python3 "$GITHUB_ACTION_PATH/prepare_build_args.py" | tail -n 1)
+
+          # Select the Dockerfile path for the platform, or fallback to generic
+          if [ -n "$platform_key" ]; then
+            DOCKERFILE_PATH_VAR="GHA_CICD_DOCKERFILE_PATH_${platform_key}"
+            DOCKERFILE_PATH="${!DOCKERFILE_PATH_VAR:-$GHA_CICD_DOCKERFILE_PATH}"
+          else
+            DOCKERFILE_PATH="$GHA_CICD_DOCKERFILE_PATH"
+          fi
 
           local image_tag="$image_url"
           if [ -n "$platform_key" ]; then
