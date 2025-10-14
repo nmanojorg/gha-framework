@@ -1,76 +1,48 @@
-name: "Docker Build (Local Registry & Save Archive)"
-description: "Optimized: Builds Docker image for local registry, supports build args from file/env, saves as image.tar, and prints debug info."
+name: "Docker Build (Multi-Arch, Multi-Image)"
+description: "Builds Docker images for multiple platforms and image URLs using env vars only."
 
 runs:
   using: "composite"
   steps:
-    - name: Prepare Docker build arguments
-      id: buildargs
-      shell: bash
-      run: python $GITHUB_ACTION_PATH/prepare_build_args.py
-
-    - name: Print Docker build environment (debug)
+    - name: Prepare Docker build arguments for each platform and image
       shell: bash
       run: |
-        echo "::group::Docker Build Debug Info"
-        env | grep GHA_CICD_ || true
-        echo "Prepared build args:"
-        printf "%s\n" "${{ steps.buildargs.outputs.BUILD_ARGS }}"
-        echo "::endgroup::"
+        PLATFORMS="${GHA_CICD_DOCKER_PLATFORMS:-linux/amd64}"
+        IMAGE_URLS="${GHA_CICD_DOCKER_IMAGE_URLS}"
+        DOCKERFILE_PATH="${GHA_CICD_DOCKERFILE_PATH:-Dockerfile}"
+        DOCKER_CONTEXT="${GHA_CICD_DOCKER_CONTEXT:-.}"
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+        for platform in $(echo "$PLATFORMS" | tr ',' ' '); do
+          platform_key="${platform//\//_}"
+          BUILD_ARGS_VAR="GHA_CICD_DOCKER_BUILD_ARGS_${platform_key}"
+          BUILD_ARGS_FILE_VAR="GHA_CICD_DOCKER_BUILD_ARGS_FILE_${platform_key}"
 
-    - name: Build Docker image with Buildx
-      uses: docker/build-push-action@v5
-      with:
-        context: ${{ env.GHA_CICD_DOCKER_CONTEXT }}
-        file: ${{ env.GHA_CICD_DOCKERFILE_PATH }}
-        tags: ${{ env.GHA_CICD_DOCKER_PUSH_URLS }}
-        build-args: ${{ steps.buildargs.outputs.BUILD_ARGS }}
-        outputs: type=tar,dest=image.tar
-        push: false
-        load: true
-        platforms: linux/arm64
+          BUILD_ARGS="${!BUILD_ARGS_VAR}"
+          BUILD_ARGS_FILE="${!BUILD_ARGS_FILE_VAR}"
 
-    - name: Check Docker image existence (debug)
-      shell: bash
-      run: |
-        echo "::group::Checking Docker image existence"
-        if docker image inspect "$GHA_CICD_DOCKER_PUSH_URLS" > /dev/null 2>&1; then
-          echo "? Image $GHA_CICD_DOCKER_PUSH_URLS exists locally."
-          docker image inspect "$GHA_CICD_DOCKER_PUSH_URLS"
-        else
-          echo "? Image $GHA_CICD_DOCKER_PUSH_URLS NOT found locally."
-        fi
-        docker images | grep "$(echo "$GHA_CICD_DOCKER_PUSH_URLS" | cut -d':' -f1)" || echo "No images found with name."
-        echo "::endgroup::"
+          # Prepare build arguments file if exists
+          ARGS_FILE_OPTION=""
+          if [ -n "$BUILD_ARGS_FILE" ] && [ -f "$BUILD_ARGS_FILE" ]; then
+            ARGS_FILE_OPTION="--build-arg-file $BUILD_ARGS_FILE"
+          fi
 
-    - name: Save Docker image as tar archive
-      shell: bash
-      run: |
-        echo "::group::Saving Docker image as image.tar"
-        #docker save -o image.tar "$GHA_CICD_DOCKER_PUSH_URLS"
-        echo "Docker image saved to image.tar"
-        echo "::endgroup::"
+          for image_url in $IMAGE_URLS; do
+            IMAGE_TAG="${image_url}-${platform_key}"
+            TAR_FILE="${IMAGE_TAG//[:\/]/_}.tar"
 
-    - name: Print tar archive debug info
-      shell: bash
-      run: |
-        echo "::group::Docker image archive debug"
-        ls -lh image.tar
-        echo "sha256sum:"
-        if command -v sha256sum &>/dev/null; then
-          sha256sum image.tar
-        elif command -v shasum &>/dev/null; then
-          shasum -a 256 image.tar
-        fi
-        echo "Tar file contents (first 20 lines):"
-        tar -tvf image.tar | head -20 || echo "Not a tar file or cannot list contents"
-        echo "::endgroup::"
+            echo "::group::Building $IMAGE_TAG for $platform"
+            docker buildx build \
+              --platform "$platform" \
+              --file "$DOCKERFILE_PATH" \
+              --context "$DOCKER_CONTEXT" \
+              $( [ -n "$BUILD_ARGS" ] && echo "--build-arg $BUILD_ARGS" ) \
+              $ARGS_FILE_OPTION \
+              -t "$IMAGE_TAG" \
+              --output type=tar,dest="$TAR_FILE" \
+              --push=false \
+              --load
 
-    - name: Upload Docker image archive
-      uses: actions/upload-artifact@v4
-      with:
-        name: docker-image-archive
-        path: image.tar
+            echo "Built $IMAGE_TAG, saved as $TAR_FILE"
+            echo "::endgroup::"
+          done
+        done
