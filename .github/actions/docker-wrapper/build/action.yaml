@@ -51,15 +51,28 @@ runs:
           BUILD_ARG_OPTIONS=""
           if [ -n "$BUILD_ARGS_FILE" ] && [ -f "$BUILD_ARGS_FILE" ]; then
             while IFS= read -r line || [ -n "$line" ]; do
-              if [ -n "$line" ]; then
-                BUILD_ARG_OPTIONS="$BUILD_ARG_OPTIONS --build-arg $line"
+              # Remove all whitespace and blank lines, and ensure KEY=VAL format only
+              clean_line="$(echo "$line" | tr -d '\r' | sed 's/^[ \t]*//;s/[ \t]*$//')"
+              if [ -n "$clean_line" ] && [[ "$clean_line" == *=* ]]; then
+                key="${clean_line%%=*}"
+                val="${clean_line#*=}"
+                key="$(echo "$key" | sed 's/^[ \t]*//;s/[ \t]*$//')"
+                val="$(echo "$val" | sed 's/^[ \t]*//;s/[ \t]*$//')"
+                BUILD_ARG_OPTIONS="$BUILD_ARG_OPTIONS --build-arg $key=$val"
               fi
             done < "$BUILD_ARGS_FILE"
             echo "[DEBUG] Added build args from file: $BUILD_ARGS_FILE"
           fi
           if [ -n "$BUILD_ARGS" ]; then
             for arg in $BUILD_ARGS; do
-              BUILD_ARG_OPTIONS="$BUILD_ARG_OPTIONS --build-arg $arg"
+              # Clean each KEY=VAL in the environment variable too
+              if [[ "$arg" == *=* ]]; then
+                key="${arg%%=*}"
+                val="${arg#*=}"
+                key="$(echo "$key" | sed 's/^[ \t]*//;s/[ \t]*$//')"
+                val="$(echo "$val" | sed 's/^[ \t]*//;s/[ \t]*$//')"
+                BUILD_ARG_OPTIONS="$BUILD_ARG_OPTIONS --build-arg $key=$val"
+              fi
             done
             echo "[DEBUG] Added build args from env: $BUILD_ARGS"
           fi
