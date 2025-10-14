@@ -7,6 +7,12 @@ runs:
     - name: Prepare Docker build arguments for each platform and image
       shell: bash
       run: |
+        echo "::group::[DEBUG] Docker Build Multi-Arch/Multi-Image"
+        echo "[DEBUG] PLATFORMS: ${GHA_CICD_DOCKER_PLATFORMS:-linux/amd64}"
+        echo "[DEBUG] IMAGE_URLS: ${GHA_CICD_DOCKER_IMAGE_URLS}"
+        echo "[DEBUG] DOCKERFILE_PATH: ${GHA_CICD_DOCKERFILE_PATH:-Dockerfile}"
+        echo "[DEBUG] DOCKER_CONTEXT: ${GHA_CICD_DOCKER_CONTEXT:-.}"
+
         PLATFORMS="${GHA_CICD_DOCKER_PLATFORMS:-linux/amd64}"
         IMAGE_URLS="${GHA_CICD_DOCKER_IMAGE_URLS}"
         DOCKERFILE_PATH="${GHA_CICD_DOCKERFILE_PATH:-Dockerfile}"
@@ -20,10 +26,18 @@ runs:
           BUILD_ARGS="${!BUILD_ARGS_VAR}"
           BUILD_ARGS_FILE="${!BUILD_ARGS_FILE_VAR}"
 
+          echo "[DEBUG] PLATFORM: $platform"
+          echo "[DEBUG] PLATFORM_KEY: $platform_key"
+          echo "[DEBUG] BUILD_ARGS_VAR: $BUILD_ARGS_VAR"
+          echo "[DEBUG] BUILD_ARGS: $BUILD_ARGS"
+          echo "[DEBUG] BUILD_ARGS_FILE_VAR: $BUILD_ARGS_FILE_VAR"
+          echo "[DEBUG] BUILD_ARGS_FILE: $BUILD_ARGS_FILE"
+
           # Prepare build arguments file if exists
           ARGS_FILE_OPTION=""
           if [ -n "$BUILD_ARGS_FILE" ] && [ -f "$BUILD_ARGS_FILE" ]; then
             ARGS_FILE_OPTION="--build-arg-file $BUILD_ARGS_FILE"
+            echo "[DEBUG] Using build args file: $BUILD_ARGS_FILE"
           fi
 
           for image_url in $IMAGE_URLS; do
@@ -31,6 +45,11 @@ runs:
             TAR_FILE="${IMAGE_TAG//[:\/]/_}.tar"
 
             echo "::group::Building $IMAGE_TAG for $platform"
+            echo "[DEBUG] IMAGE_URL: $image_url"
+            echo "[DEBUG] IMAGE_TAG: $IMAGE_TAG"
+            echo "[DEBUG] TAR_FILE: $TAR_FILE"
+            echo "[DEBUG] docker buildx build --platform \"$platform\" --file \"$DOCKERFILE_PATH\" --context \"$DOCKER_CONTEXT\" $( [ -n \"$BUILD_ARGS\" ] && echo \"--build-arg $BUILD_ARGS\" ) $ARGS_FILE_OPTION -t \"$IMAGE_TAG\" --output type=tar,dest=\"$TAR_FILE\" --push=false --load"
+
             docker buildx build \
               --platform "$platform" \
               --file "$DOCKERFILE_PATH" \
@@ -46,3 +65,4 @@ runs:
             echo "::endgroup::"
           done
         done
+        echo "::endgroup::"
