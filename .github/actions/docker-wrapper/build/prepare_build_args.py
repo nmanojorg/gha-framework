@@ -1,47 +1,43 @@
 import os
-import sys
 
-if len(sys.argv) != 2:
-    print("Usage: python prepare_build_args.py <platform_key>")
-    sys.exit(1)
+def get_args_from_file(file_path):
+    """Parse KEY=VAL lines from a file, strip whitespace, and return as list of --build-arg KEY=VAL."""
+    args = []
+    if file_path and os.path.isfile(file_path):
+        with open(file_path) as f:
+            for line in f:
+                line = line.strip()
+                if line and '=' in line:
+                    key, val = line.split('=', 1)
+                    key = key.strip()
+                    val = val.strip()
+                    args.append(f"--build-arg {key}={val}")
+    return args
 
-platform_key = sys.argv[1]
-args = []
+def get_args_from_env(env_args):
+    """Parse space-separated KEY=VAL pairs from environment variable."""
+    args = []
+    for item in env_args.split():
+        if '=' in item:
+            key, val = item.split('=', 1)
+            key = key.strip()
+            val = val.strip()
+            args.append(f"--build-arg {key}={val}")
+    return args
 
-def parse_line(line):
-    line = line.strip()  # Removes all ending/leading whitespace including \n, \r, \t, space
-    if not line or "=" not in line:
-        return None
-    key, val = line.split('=', 1)
-    key = key.strip()
-    val = val.strip()
-    return f"{key}={val}"
-
-# Per-platform build args file
-file_env_name = f"GHA_CICD_DOCKER_BUILD_ARGS_FILE_{platform_key}"
-file_path = os.getenv(file_env_name)
-if file_path and os.path.isfile(file_path):
-    with open(file_path) as f:
-        for line in f:
-            parsed = parse_line(line)
-            if parsed:
-                args.append(parsed)
-
-# Per-platform build args env var (space-separated KEY=VAL)
-env_args_name = f"GHA_CICD_DOCKER_BUILD_ARGS_{platform_key}"
-env_args = os.getenv(env_args_name, "")
-for a in env_args.split():
-    parsed = parse_line(a)
-    if parsed:
-        args.append(parsed)
-
-# Write the output to GITHUB_OUTPUT for GitHub Actions
-output_file = os.environ.get("GITHUB_OUTPUT")
-if output_file:
-    with open(output_file, "a") as f:
-        f.write("BUILD_ARGS<<EOF\n")
-        f.write('\n'.join(args) + '\n')
-        f.write("EOF\n")
-else:
-    for arg in args:
-        print(arg)
+if __name__ == "__main__":
+    print("::group::Build Args Parser (prepare_build_args.py)")
+    platform_key = os.environ.get("PLATFORM_KEY", "")
+    if platform_key:
+        env_args = os.environ.get(f"GHA_CICD_DOCKER_BUILD_ARGS_{platform_key}", "")
+        file_path = os.environ.get(f"GHA_CICD_DOCKER_BUILD_ARGS_FILE_{platform_key}", "")
+        print(f"[INFO] Using per-platform args for: {platform_key}")
+    else:
+        env_args = os.environ.get("GHA_CICD_DOCKER_BUILD_ARGS", "")
+        file_path = os.environ.get("GHA_CICD_DOCKER_BUILD_ARGS_FILE", "")
+        print("[INFO] Using generic build args (no platform specified)")
+    build_args = get_args_from_file(file_path) + get_args_from_env(env_args)
+    print(f"[INFO] Parsed build args: {' '.join(build_args)}")
+    print("::endgroup::")
+    if build_args:
+        print(" ".join(build_args))

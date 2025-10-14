@@ -4,16 +4,6 @@ description: "Builds Docker images for multiple platforms and image URLs using e
 runs:
   using: "composite"
   steps:
-    - name: Debug Docker Build Settings
-      shell: bash
-      run: |
-        echo "::group::[DEBUG] Docker Build Multi-Arch/Multi-Image"
-        echo "[DEBUG] PLATFORMS env: '${GHA_CICD_DOCKER_PLATFORMS}'"
-        echo "[DEBUG] IMAGE_URLS env: '${GHA_CICD_DOCKER_IMAGE_URLS}'"
-        echo "[DEBUG] DOCKERFILE_PATH env: '${GHA_CICD_DOCKERFILE_PATH}'"
-        echo "[DEBUG] DOCKER_CONTEXT env: '${GHA_CICD_DOCKER_CONTEXT}'"
-        echo "::endgroup::"
-
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 
@@ -21,84 +11,69 @@ runs:
       shell: bash
       run: |
         set -e
-        echo "::group::Docker Build Execution"
-        PLATFORMS="${GHA_CICD_DOCKER_PLATFORMS:-linux/amd64}"
-        IMAGE_URLS="${GHA_CICD_DOCKER_IMAGE_URLS}"
-        DOCKERFILE_PATH="${GHA_CICD_DOCKERFILE_PATH:-Dockerfile}"
-        DOCKER_CONTEXT="${GHA_CICD_DOCKER_CONTEXT:-.}"
 
-        echo "[DEBUG] Expanded PLATFORMS: $PLATFORMS"
-        echo "[DEBUG] Expanded IMAGE_URLS: $IMAGE_URLS"
-        echo "[DEBUG] Expanded DOCKERFILE_PATH: $DOCKERFILE_PATH"
-        echo "[DEBUG] Expanded DOCKER_CONTEXT: $DOCKER_CONTEXT"
-
-        for platform in $(echo "$PLATFORMS" | tr ',' ' '); do
-          platform_key="${platform//\//_}"
-          BUILD_ARGS_VAR="GHA_CICD_DOCKER_BUILD_ARGS_${platform_key}"
-          BUILD_ARGS_FILE_VAR="GHA_CICD_DOCKER_BUILD_ARGS_FILE_${platform_key}"
-
-          BUILD_ARGS="${!BUILD_ARGS_VAR}"
-          BUILD_ARGS_FILE="${!BUILD_ARGS_FILE_VAR}"
-
-          echo "[DEBUG] PLATFORM: $platform"
-          echo "[DEBUG] PLATFORM_KEY: $platform_key"
-          echo "[DEBUG] BUILD_ARGS_VAR: $BUILD_ARGS_VAR"
-          echo "[DEBUG] BUILD_ARGS: $BUILD_ARGS"
-          echo "[DEBUG] BUILD_ARGS_FILE_VAR: $BUILD_ARGS_FILE_VAR"
-          echo "[DEBUG] BUILD_ARGS_FILE: $BUILD_ARGS_FILE"
-
-          # Prepare build args for docker buildx (converted to --build-arg KEY=VAL)
-          BUILD_ARG_OPTIONS=""
-          if [ -n "$BUILD_ARGS_FILE" ] && [ -f "$BUILD_ARGS_FILE" ]; then
-            while IFS= read -r line || [ -n "$line" ]; do
-              # Remove all whitespace and blank lines, and ensure KEY=VAL format only
-              clean_line="$(echo "$line" | tr -d '\r' | sed 's/^[ \t]*//;s/[ \t]*$//')"
-              if [ -n "$clean_line" ] && [[ "$clean_line" == *=* ]]; then
-                key="${clean_line%%=*}"
-                val="${clean_line#*=}"
-                key="$(echo "$key" | sed 's/^[ \t]*//;s/[ \t]*$//')"
-                val="$(echo "$val" | sed 's/^[ \t]*//;s/[ \t]*$//')"
-                BUILD_ARG_OPTIONS="$BUILD_ARG_OPTIONS --build-arg $key=$val"
-              fi
-            done < "$BUILD_ARGS_FILE"
-            echo "[DEBUG] Added build args from file: $BUILD_ARGS_FILE"
-          fi
-          if [ -n "$BUILD_ARGS" ]; then
-            for arg in $BUILD_ARGS; do
-              # Clean each KEY=VAL in the environment variable too
-              if [[ "$arg" == *=* ]]; then
-                key="${arg%%=*}"
-                val="${arg#*=}"
-                key="$(echo "$key" | sed 's/^[ \t]*//;s/[ \t]*$//')"
-                val="$(echo "$val" | sed 's/^[ \t]*//;s/[ \t]*$//')"
-                BUILD_ARG_OPTIONS="$BUILD_ARG_OPTIONS --build-arg $key=$val"
-              fi
-            done
-            echo "[DEBUG] Added build args from env: $BUILD_ARGS"
-          fi
-
-          for image_url in $IMAGE_URLS; do
-            IMAGE_TAG="${image_url}-${platform_key}"
-            TAR_FILE="${IMAGE_TAG//[:\/]/_}.tar"
-
-            echo "::group::Building $IMAGE_TAG for $platform"
-            echo "[DEBUG] IMAGE_URL: $image_url"
-            echo "[DEBUG] IMAGE_TAG: $IMAGE_TAG"
-            echo "[DEBUG] TAR_FILE: $TAR_FILE"
-            echo "[DEBUG] docker buildx build --platform \"$platform\" --file \"$DOCKERFILE_PATH\" $BUILD_ARG_OPTIONS -t \"$IMAGE_TAG\" --output type=tar,dest=\"$TAR_FILE\" --push=false --load \"$DOCKER_CONTEXT\""
-
-            docker buildx build \
-              --platform "$platform" \
-              --file "$DOCKERFILE_PATH" \
-              $BUILD_ARG_OPTIONS \
-              -t "$IMAGE_TAG" \
-              --output type=tar,dest="$TAR_FILE" \
-              --push=false \
-              --load \
-              "$DOCKER_CONTEXT"
-
-            echo "Built $IMAGE_TAG, saved as $TAR_FILE"
-            echo "::endgroup::"
-          done
-        done
+        echo "::group::Docker Build Settings"
+        echo "[INFO] IMAGE_URLS: $GHA_CICD_DOCKER_IMAGE_URLS"
+        echo "[INFO] DOCKERFILE_PATH: $GHA_CICD_DOCKERFILE_PATH"
+        echo "[INFO] DOCKER_CONTEXT: $GHA_CICD_DOCKER_CONTEXT"
+        echo "[INFO] PLATFORMS: $GHA_CICD_DOCKER_PLATFORMS"
         echo "::endgroup::"
+
+        IMAGE_URLS="${GHA_CICD_DOCKER_IMAGE_URLS}"
+        DOCKERFILE_PATH="${GHA_CICD_DOCKERFILE_PATH}"
+        DOCKER_CONTEXT="${GHA_CICD_DOCKER_CONTEXT}"
+        PLATFORMS="${GHA_CICD_DOCKER_PLATFORMS}"
+
+        build_image() {
+          local image_url="$1"
+          local platform="$2"
+          local platform_key="$3"
+
+          export PLATFORM_KEY="$platform_key"
+          echo "::group::Build Arguments"
+          BUILD_ARG_OPTIONS=$(python3 "$GITHUB_ACTION_PATH/prepare_build_args.py")
+          echo "[INFO] BUILD_ARG_OPTIONS: $BUILD_ARG_OPTIONS"
+          echo "::endgroup::"
+
+          local image_tag="$image_url"
+          if [ -n "$platform_key" ]; then
+            image_tag="${image_url}-${platform_key}"
+          fi
+          local tar_file="${image_tag//[:\/]/_}.tar"
+
+          if [ -n "$platform" ]; then
+            echo "::group::Building $image_tag for $platform"
+          else
+            echo "::group::Building $image_tag (default platform)"
+          fi
+
+          docker buildx build \
+            ${platform:+--platform "$platform"} \
+            --file "$DOCKERFILE_PATH" \
+            $BUILD_ARG_OPTIONS \
+            -t "$image_tag" \
+            --output type=tar,dest="$tar_file" \
+            --push=false \
+            --load \
+            "$DOCKER_CONTEXT"
+
+          echo "Built $image_tag, saved as $tar_file"
+          echo "::endgroup::"
+        }
+
+        if [ -z "$PLATFORMS" ]; then
+          for image_url in $IMAGE_URLS; do
+            build_image "$image_url" "" ""
+          done
+        else
+          # Split platforms by comma, trim spaces, and ignore empty entries
+          IFS=',' read -ra platform_list <<< "$PLATFORMS"
+          for raw_platform in "${platform_list[@]}"; do
+            platform="$(echo "$raw_platform" | xargs)"
+            [ -z "$platform" ] && continue
+            platform_key="${platform//\//_}"
+            for image_url in $IMAGE_URLS; do
+              build_image "$image_url" "$platform" "$platform_key"
+            done
+          done
+        fi
