@@ -33,6 +33,7 @@ runs:
           type=tar,dest=image.tar
         push: false
         load: true
+        platform: linux/amd64,linux/arm64
 
     - name: Check Docker image existence (debug)
       shell: bash
