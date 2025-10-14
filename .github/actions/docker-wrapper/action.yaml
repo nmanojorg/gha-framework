@@ -92,9 +92,9 @@ runs:
           - run_test
           - run_scan
           - run_publish
-          - GHA_CICD_DOCKERFILE_PATH
           - GHA_CICD_DOCKER_CONTEXT
         optionalInputs: |
+          - GHA_CICD_DOCKERFILE_PATH
           - GHA_CICD_DOCKER_BUILD_ARGS
           - GHA_CICD_DOCKER_PUSH_URLS
           - GHA_CICD_DOCKER_CONFIG_JSON
