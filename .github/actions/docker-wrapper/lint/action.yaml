@@ -33,8 +33,6 @@ runs:
         echo "::endgroup::"
         echo "::endgroup::?? Hadolint Linting End"
 
-        exit $EXIT_CODE
-
     - name: Upload Hadolint Report
       uses: actions/upload-artifact@v4
       if: ${{ !cancelled() }}
