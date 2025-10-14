@@ -9,7 +9,7 @@ runs:
       run: |
         echo "::group::[DEBUG] Docker Build Multi-Arch/Multi-Image"
         echo "[DEBUG] PLATFORMS env: '${GHA_CICD_DOCKER_PLATFORMS}'"
-        echo "[DEBUG] IMAGE_URLS env: '${GHA_CICD_DOCKER_PUSH_URLS}'"
+        echo "[DEBUG] IMAGE_URLS env: '${GHA_CICD_DOCKER_IMAGE_URLS}'"
         echo "[DEBUG] DOCKERFILE_PATH env: '${GHA_CICD_DOCKERFILE_PATH}'"
         echo "[DEBUG] DOCKER_CONTEXT env: '${GHA_CICD_DOCKER_CONTEXT}'"
         echo "::endgroup::"
@@ -20,7 +20,7 @@ runs:
         set -e
         echo "::group::Docker Build Execution"
         PLATFORMS="${GHA_CICD_DOCKER_PLATFORMS:-linux/amd64}"
-        IMAGE_URLS="${GHA_CICD_DOCKER_PUSH_URLS}"
+        IMAGE_URLS="${GHA_CICD_DOCKER_IMAGE_URLS}"
         DOCKERFILE_PATH="${GHA_CICD_DOCKERFILE_PATH:-Dockerfile}"
         DOCKER_CONTEXT="${GHA_CICD_DOCKER_CONTEXT:-.}"
 
@@ -58,18 +58,18 @@ runs:
             echo "[DEBUG] IMAGE_URL: $image_url"
             echo "[DEBUG] IMAGE_TAG: $IMAGE_TAG"
             echo "[DEBUG] TAR_FILE: $TAR_FILE"
-            echo "[DEBUG] docker buildx build --platform \"$platform\" --file \"$DOCKERFILE_PATH\" --context \"$DOCKER_CONTEXT\" $( [ -n \"$BUILD_ARGS\" ] && echo \"--build-arg $BUILD_ARGS\" ) $ARGS_FILE_OPTION -t \"$IMAGE_TAG\" --output type=tar,dest=\"$TAR_FILE\" --push=false --load"
+            echo "[DEBUG] docker buildx build --platform \"$platform\" --file \"$DOCKERFILE_PATH\" $( [ -n \"$BUILD_ARGS\" ] && echo \"--build-arg $BUILD_ARGS\" ) $ARGS_FILE_OPTION -t \"$IMAGE_TAG\" --output type=tar,dest=\"$TAR_FILE\" --push=false --load \"$DOCKER_CONTEXT\""
 
             docker buildx build \
               --platform "$platform" \
               --file "$DOCKERFILE_PATH" \
-              --context "$DOCKER_CONTEXT" \
               $( [ -n "$BUILD_ARGS" ] && echo "--build-arg $BUILD_ARGS" ) \
               $ARGS_FILE_OPTION \
               -t "$IMAGE_TAG" \
               --output type=tar,dest="$TAR_FILE" \
               --push=false \
-              --load
+              --load \
+              "$DOCKER_CONTEXT"
 
             echo "Built $IMAGE_TAG, saved as $TAR_FILE"
             echo "::endgroup::"
