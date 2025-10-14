@@ -1,15 +1,27 @@
 import os
+import sys
+
+# Usage: python prepare_build_args.py <platform_key>
+# e.g., python prepare_build_args.py linux_amd64
+
+if len(sys.argv) != 2:
+    print("Usage: python prepare_build_args.py <platform_key>")
+    sys.exit(1)
+
+platform_key = sys.argv[1]
 
 args = []
 
-# Get build args from file if provided
-file = os.getenv("GHA_CICD_DOCKER_BUILD_ARGS_FILE")
+# Per-platform build args file
+file_env_name = f"GHA_CICD_DOCKER_BUILD_ARGS_FILE_{platform_key}"
+file = os.getenv(file_env_name)
 if file and os.path.isfile(file):
     with open(file) as f:
         args += [line.strip() for line in f if line.strip()]
 
-# Get build args from environment variable (space-separated)
-env_args = os.getenv("GHA_CICD_DOCKER_BUILD_ARGS", "")
+# Per-platform build args env var (space-separated)
+env_args_name = f"GHA_CICD_DOCKER_BUILD_ARGS_{platform_key}"
+env_args = os.getenv(env_args_name, "")
 args += [a for a in env_args.split() if a]
 
 # Write the output to GITHUB_OUTPUT for GitHub Actions
@@ -19,3 +31,5 @@ if output_file:
         f.write("BUILD_ARGS<<EOF\n")
         f.write('\n'.join(args) + '\n')
         f.write("EOF\n")
+else:
+    print('\n'.join(args))

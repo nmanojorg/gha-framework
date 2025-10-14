@@ -14,6 +14,9 @@ runs:
         echo "[DEBUG] DOCKER_CONTEXT env: '${GHA_CICD_DOCKER_CONTEXT}'"
         echo "::endgroup::"
 
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
     - name: Build images for each platform and image
       shell: bash
       run: |
@@ -44,10 +47,21 @@ runs:
           echo "[DEBUG] BUILD_ARGS_FILE_VAR: $BUILD_ARGS_FILE_VAR"
           echo "[DEBUG] BUILD_ARGS_FILE: $BUILD_ARGS_FILE"
 
-          ARGS_FILE_OPTION=""
+          # Prepare build args for docker buildx (converted to --build-arg KEY=VAL)
+          BUILD_ARG_OPTIONS=""
           if [ -n "$BUILD_ARGS_FILE" ] && [ -f "$BUILD_ARGS_FILE" ]; then
-            ARGS_FILE_OPTION="--build-arg-file $BUILD_ARGS_FILE"
-            echo "[DEBUG] Using build args file: $BUILD_ARGS_FILE"
+            while IFS= read -r line || [ -n "$line" ]; do
+              if [ -n "$line" ]; then
+                BUILD_ARG_OPTIONS="$BUILD_ARG_OPTIONS --build-arg $line"
+              fi
+            done < "$BUILD_ARGS_FILE"
+            echo "[DEBUG] Added build args from file: $BUILD_ARGS_FILE"
+          fi
+          if [ -n "$BUILD_ARGS" ]; then
+            for arg in $BUILD_ARGS; do
+              BUILD_ARG_OPTIONS="$BUILD_ARG_OPTIONS --build-arg $arg"
+            done
+            echo "[DEBUG] Added build args from env: $BUILD_ARGS"
           fi
 
           for image_url in $IMAGE_URLS; do
@@ -58,13 +72,12 @@ runs:
             echo "[DEBUG] IMAGE_URL: $image_url"
             echo "[DEBUG] IMAGE_TAG: $IMAGE_TAG"
             echo "[DEBUG] TAR_FILE: $TAR_FILE"
-            echo "[DEBUG] docker buildx build --platform \"$platform\" --file \"$DOCKERFILE_PATH\" $( [ -n \"$BUILD_ARGS\" ] && echo \"--build-arg $BUILD_ARGS\" ) $ARGS_FILE_OPTION -t \"$IMAGE_TAG\" --output type=tar,dest=\"$TAR_FILE\" --push=false --load \"$DOCKER_CONTEXT\""
+            echo "[DEBUG] docker buildx build --platform \"$platform\" --file \"$DOCKERFILE_PATH\" $BUILD_ARG_OPTIONS -t \"$IMAGE_TAG\" --output type=tar,dest=\"$TAR_FILE\" --push=false --load \"$DOCKER_CONTEXT\""
 
             docker buildx build \
               --platform "$platform" \
               --file "$DOCKERFILE_PATH" \
-              $( [ -n "$BUILD_ARGS" ] && echo "--build-arg $BUILD_ARGS" ) \
-              $ARGS_FILE_OPTION \
+              $BUILD_ARG_OPTIONS \
               -t "$IMAGE_TAG" \
               --output type=tar,dest="$TAR_FILE" \
               --push=false \
