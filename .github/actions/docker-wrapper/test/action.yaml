@@ -1,0 +1,69 @@
+name: "Test (Docker image, dgoss)"
+description: "Run container tests using dgoss for images built from Dockerfiles (multi-arch supported, per-arch test file supported). All configuration via GHA_CICD_ env vars. Groups output using GitHub logging."
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install dgoss/goss
+      shell: bash
+      run: |
+        curl -L https://github.com/aelsabbahy/goss/releases/latest/download/goss-linux-amd64 > /usr/local/bin/goss
+        chmod +x /usr/local/bin/goss
+        curl -L https://github.com/aelsabbahy/goss/releases/latest/download/dgoss > /usr/local/bin/dgoss
+        chmod +x /usr/local/bin/dgoss
+
+    - name: Run dgoss tests
+      shell: bash
+      run: |
+        echo "::group::?? dgoss Test Start"
+        IMAGE_URLS="${GHA_CICD_DOCKER_IMAGE_URLS}"
+        PLATFORMS="${GHA_CICD_DOCKER_PLATFORMS}"
+
+        # Output dgoss version
+        echo "::group::dgoss Version"
+        dgoss --version | tee dgoss-report.txt
+        echo "::endgroup::"
+
+        if [ -z "$PLATFORMS" ]; then
+          DGOSS_TEST_FILE="${GHA_CICD_DGOSS_TEST_FILE:-goss.yaml}"
+          if [ ! -f "$DGOSS_TEST_FILE" ]; then
+            echo "? dgoss test file not found: $DGOSS_TEST_FILE"
+            exit 1
+          fi
+          for image_url in $IMAGE_URLS; do
+            echo "Testing image: $image_url with test file: $DGOSS_TEST_FILE"
+            export GOSS_FILE="$DGOSS_TEST_FILE"
+            dgoss run "$image_url" | tee -a dgoss-report.txt
+          done
+        else
+          IFS=',' read -ra platform_list <<< "$PLATFORMS"
+          for raw_platform in "${platform_list[@]}"; do
+            platform="$(echo "$raw_platform" | xargs)"
+            [ -z "$platform" ] && continue
+            platform_key="${platform//\//_}"
+            DGOSS_TEST_FILE_VAR="GHA_CICD_DGOSS_TEST_FILE_${platform_key}"
+            DGOSS_TEST_FILE="${!DGOSS_TEST_FILE_VAR:-$GHA_CICD_DGOSS_TEST_FILE}"
+            if [ -z "$DGOSS_TEST_FILE" ]; then
+              DGOSS_TEST_FILE="goss.yaml"
+            fi
+            if [ ! -f "$DGOSS_TEST_FILE" ]; then
+              echo "? dgoss test file not found for $platform: $DGOSS_TEST_FILE"
+              continue
+            fi
+            for image_url in $IMAGE_URLS; do
+              image_tag="${image_url}-${platform_key}"
+              echo "Testing image: $image_tag with test file: $DGOSS_TEST_FILE"
+              export GOSS_FILE="$DGOSS_TEST_FILE"
+              dgoss run "$image_tag" | tee -a dgoss-report.txt
+            done
+          done
+        fi
+
+        echo "::endgroup::?? dgoss Test End"
+
+    - name: Upload dgoss Test Report
+      uses: actions/upload-artifact@v4
+      if: ${{ !cancelled() }}
+      with:
+        name: dgoss-report
+        path: dgoss-report.txt
