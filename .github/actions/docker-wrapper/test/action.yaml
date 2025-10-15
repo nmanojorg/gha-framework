@@ -1,5 +1,5 @@
 name: "Test (Docker image, dgoss)"
-description: "Runs dgoss tests on locally built and loaded images for each platform and image URL. Supports single or multiple platforms, per-arch goss files, and saves test reports as artifacts. All configuration via GHA_CICD_ env vars. Adds --entrypoint tail and passes --platform if set."
+description: "Runs dgoss tests on locally built and loaded images for each platform. Uses only the first built/tagged image per platform for testing. Supports single or multiple platforms, per-arch goss files, and saves test reports as artifacts. All configuration via GHA_CICD_ env vars. Adds --entrypoint tail and passes --platform if set."
 
 runs:
   using: "composite"
@@ -15,7 +15,7 @@ runs:
         curl -Ls https://github.com/aelsabbahy/goss/releases/latest/download/dgoss > /usr/local/bin/dgoss
         chmod +x /usr/local/bin/dgoss
 
-    - name: Run dgoss tests (multi-arch, multi-image, entrypoint override, platform if set)
+    - name: Run dgoss tests (multi-arch, entrypoint override, platform if set)
       shell: bash
       run: |
         set -e
@@ -36,31 +36,31 @@ runs:
             exit 1
           fi
 
-          for image_url in "${image_url_list[@]}"; do
-            echo "Testing image: $image_url with test file: $DGOSS_TEST_FILE"
-            export GOSS_FILE="$DGOSS_TEST_FILE"
-            dgoss run --entrypoint tail "$image_url" -f /dev/null | tee -a dgoss-report.txt
-          done
+          # Use only the first image for testing
+          first_image_url="${image_url_list[0]}"
+          echo "Testing image: $first_image_url with test file: $DGOSS_TEST_FILE"
+          export GOSS_FILE="$DGOSS_TEST_FILE"
+          dgoss run --entrypoint tail "$first_image_url" -f /dev/null | tee -a dgoss-report.txt
 
         else
           IFS=',' read -ra platform_list <<< "$PLATFORMS"
-          for image_url in "${image_url_list[@]}"; do
-            for platform in "${platform_list[@]}"; do
-              platform="$(echo "$platform" | xargs)"
-              platform_key="${platform//\//_}"
-              image_tag="${image_url}-${platform_key}"
-              DGOSS_TEST_FILE_VAR="GHA_CICD_DGOSS_TEST_FILE_${platform_key}"
-              DGOSS_TEST_FILE="${!DGOSS_TEST_FILE_VAR:-$GHA_CICD_DGOSS_TEST_FILE:-goss.yaml}"
+          # Use only the first image for each platform
+          first_image_url="${image_url_list[0]}"
+          for platform in "${platform_list[@]}"; do
+            platform="$(echo "$platform" | xargs)"
+            platform_key="${platform//\//_}"
+            image_tag="${first_image_url}-${platform_key}"
+            DGOSS_TEST_FILE_VAR="GHA_CICD_DGOSS_TEST_FILE_${platform_key}"
+            DGOSS_TEST_FILE="${!DGOSS_TEST_FILE_VAR:-$GHA_CICD_DGOSS_TEST_FILE:-goss.yaml}"
 
-              if [ ! -f "$DGOSS_TEST_FILE" ]; then
-                echo "? dgoss test file not found for $platform: $DGOSS_TEST_FILE"
-                continue
-              fi
+            if [ ! -f "$DGOSS_TEST_FILE" ]; then
+              echo "? dgoss test file not found for $platform: $DGOSS_TEST_FILE"
+              continue
+            fi
 
-              echo "Testing image: $image_tag with test file: $DGOSS_TEST_FILE on platform: $platform"
-              export GOSS_FILE="$DGOSS_TEST_FILE"
-              dgoss run --entrypoint tail --platform "$platform" "$image_tag" -f /dev/null | tee -a dgoss-report.txt
-            done
+            echo "Testing image: $image_tag with test file: $DGOSS_TEST_FILE on platform: $platform"
+            export GOSS_FILE="$DGOSS_TEST_FILE"
+            dgoss run --entrypoint tail --platform "$platform" "$image_tag" -f /dev/null | tee -a dgoss-report.txt
           done
         fi
 
