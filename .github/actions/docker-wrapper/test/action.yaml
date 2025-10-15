@@ -35,7 +35,7 @@ runs:
           for image_url in $IMAGE_URLS; do
             echo "Testing image: $image_url with test file: $DGOSS_TEST_FILE"
             export GOSS_FILE="$DGOSS_TEST_FILE"
-            dgoss run "$image_url" | tee -a dgoss-report.txt
+            dgoss run --entrypoint "$image_url" -f /dev/null | tee -a dgoss-report.txt
           done
         else
           IFS=',' read -ra platform_list <<< "$PLATFORMS"
@@ -57,7 +57,7 @@ runs:
               echo "Testing image: $image_tag with test file: $DGOSS_TEST_FILE on platform: $platform"
               export GOSS_FILE="$DGOSS_TEST_FILE"
               # Use --platform argument for cross-architecture testing
-              dgoss run --platform "$platform" "$image_tag" | tee -a dgoss-report.txt
+              dgoss run --entrypoint --platform "$platform" "$image_tag" -f /dev/null | tee -a dgoss-report.txt
             done
           done
         fi
