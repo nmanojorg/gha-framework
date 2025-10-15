@@ -9,9 +9,9 @@ runs:
       run: |
         echo "::group::Hadolint Linting Start"
 
-        DOCKERFILE="${GHA_CICD_DOCKERFILE_PATH:-Dockerfile}"
-        HADOLINT_IMAGE="${GHA_CICD_HADOLINT_IMAGE:-hadolint/hadolint:latest}"
-        HADOLINT_CONFIG="${GHA_CICD_HADOLINT_CONFIG:-}"
+        DOCKERFILE="${GHA_CICD_DOCKERFILE_PATH}"
+        HADOLINT_IMAGE="${GHA_CICD_HADOLINT_IMAGE}"
+        HADOLINT_CONFIG="${GHA_CICD_HADOLINT_CONFIG}"
 
         echo "Linting Dockerfile: $DOCKERFILE"
         if [ -n "$HADOLINT_CONFIG" ]; then
