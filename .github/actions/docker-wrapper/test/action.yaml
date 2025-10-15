@@ -20,8 +20,8 @@ runs:
         PLATFORMS="${GHA_CICD_DOCKER_PLATFORMS}"
 
         # Output dgoss version
-        echo "::group::dgoss Version"
-        dgoss --version | tee dgoss-report.txt
+        echo "::group::goss Version"
+        goss --version | tee dgoss-report.txt
         echo "::endgroup::"
 
         if [ -z "$PLATFORMS" ]; then
