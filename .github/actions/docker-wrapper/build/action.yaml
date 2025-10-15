@@ -1,9 +1,12 @@
 name: "Docker Build (Multi-Arch, Multi-Image)"
-description: "Builds Docker images for multiple platforms and image URLs using env vars only, with support for per-platform Dockerfiles."
+description: "Builds Docker images for multiple platforms and image URLs using env vars only, with support for per-platform Dockerfiles. Automatically sets up QEMU for cross-architecture builds."
 
 runs:
   using: "composite"
   steps:
+    - name: Set up QEMU (for cross-arch builds)
+      uses: docker/setup-qemu-action@v3
+
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 

@@ -4,6 +4,9 @@ description: "Run container tests using dgoss for images built from Dockerfiles 
 runs:
   using: "composite"
   steps:
+    - name: Set up QEMU (for cross-arch testing)
+      uses: docker/setup-qemu-action@v3
+
     - name: Install dgoss/goss
       shell: bash
       run: |
@@ -19,7 +22,6 @@ runs:
         IMAGE_URLS="${GHA_CICD_DOCKER_IMAGE_URLS}"
         PLATFORMS="${GHA_CICD_DOCKER_PLATFORMS}"
 
-        # Output dgoss version
         echo "::group::goss Version"
         goss --version | tee dgoss-report.txt
         echo "::endgroup::"
@@ -54,6 +56,8 @@ runs:
               image_tag="${image_url}-${platform_key}"
               echo "Testing image: $image_tag with test file: $DGOSS_TEST_FILE"
               export GOSS_FILE="$DGOSS_TEST_FILE"
+              # Set DGOSS_PLATFORM for non-native arch testing
+              export DGOSS_PLATFORM="$platform"
               dgoss run "$image_tag" | tee -a dgoss-report.txt
             done
           done
