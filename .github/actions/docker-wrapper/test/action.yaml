@@ -1,5 +1,5 @@
 name: "Test (Docker image, dgoss)"
-description: "Run container tests using dgoss for images built from Dockerfiles (multi-arch supported, per-arch test file supported). All configuration via GHA_CICD_ env vars. Groups output using GitHub logging."
+description: "Run container tests using dgoss for images built from Dockerfiles (multi-arch supported, per-arch test file supported). All configuration via GHA_CICD_ env vars. Groups output using GitHub logging. Uses '--platform' argument for cross-arch tests."
 
 runs:
   using: "composite"
@@ -56,8 +56,8 @@ runs:
               image_tag="${image_url}-${platform_key}"
               echo "Testing image: $image_tag with test file: $DGOSS_TEST_FILE on platform: $platform"
               export GOSS_FILE="$DGOSS_TEST_FILE"
-              export DGOSS_PLATFORM="$platform"
-              dgoss run "$image_tag" | tee -a dgoss-report.txt
+              # Use --platform argument for cross-architecture testing
+              dgoss run --platform "$platform" "$image_tag" | tee -a dgoss-report.txt
             done
           done
         fi
