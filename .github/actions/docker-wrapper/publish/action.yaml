@@ -28,6 +28,8 @@ runs:
         tags: ${{ env.GHA_CICD_DOCKER_IMAGE_URLS }}
         build-args: ${{ steps.prep_build_args.outputs.build_args }}
         push: true
+        cache-from: type=local,src=./.buildx-cache
+        cache-to: type=local,dest=./.buildx-cache,mode=max
 
     - name: Logout from Docker (cleanup)
       shell: bash

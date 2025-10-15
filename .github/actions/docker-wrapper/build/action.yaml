@@ -40,6 +40,7 @@ runs:
             $BUILD_ARG_OPTIONS \
             -t "$image_tag" \
             --output type=tar,dest="$tar_file" \
+            --cache-to=type=local,dest=./.buildx-cache \
             --push=false \
             --load \
             "$DOCKER_CONTEXT"
