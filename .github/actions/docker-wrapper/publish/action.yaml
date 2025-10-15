@@ -1,0 +1,43 @@
+name: "Publish Docker Images"
+description: "Pushes multi-arch Docker images to registry using env vars only. Supports per-platform images and tags. Assumes Docker config is already set up in $HOME/.docker/config.json by parent workflow."
+
+runs:
+  using: "composite"
+  steps:
+    - name: Push Docker images
+      shell: bash
+      run: |
+        set -e
+        IMAGE_URLS="${GHA_CICD_DOCKER_PUSH_URLS:-$GHA_CICD_DOCKER_IMAGE_URLS}"
+        PLATFORMS="${GHA_CICD_DOCKER_PLATFORMS}"
+
+        if [ -z "$IMAGE_URLS" ]; then
+          echo "No images to push. Set GHA_CICD_DOCKER_PUSH_URLS or GHA_CICD_DOCKER_IMAGE_URLS."
+          exit 1
+        fi
+
+        if [ -z "$PLATFORMS" ]; then
+          for image_url in $IMAGE_URLS; do
+            echo "::group::Pushing image $image_url"
+            docker push "$image_url"
+            echo "::endgroup::"
+          done
+        else
+          IFS=',' read -ra platform_list <<< "$PLATFORMS"
+          for raw_platform in "${platform_list[@]}"; do
+            platform="$(echo "$raw_platform" | xargs)"
+            [ -z "$platform" ] && continue
+            platform_key="${platform//\//_}"
+            for image_url in $IMAGE_URLS; do
+              image_tag="${image_url}-${platform_key}"
+              echo "::group::Pushing image $image_tag for $platform"
+              docker push "$image_tag"
+              echo "::endgroup::"
+            done
+          done
+        fi
+
+    - name: Logout from Docker (cleanup)
+      shell: bash
+      run: |
+        docker logout || true
