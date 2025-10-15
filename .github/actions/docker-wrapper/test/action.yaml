@@ -10,9 +10,9 @@ runs:
     - name: Install dgoss/goss
       shell: bash
       run: |
-        curl -L https://github.com/aelsabbahy/goss/releases/latest/download/goss-linux-amd64 > /usr/local/bin/goss
+        curl -Ls https://github.com/aelsabbahy/goss/releases/latest/download/goss-linux-amd64 > /usr/local/bin/goss
         chmod +x /usr/local/bin/goss
-        curl -L https://github.com/aelsabbahy/goss/releases/latest/download/dgoss > /usr/local/bin/dgoss
+        curl -Ls https://github.com/aelsabbahy/goss/releases/latest/download/dgoss > /usr/local/bin/dgoss
         chmod +x /usr/local/bin/dgoss
 
     - name: Run dgoss tests
@@ -54,9 +54,8 @@ runs:
             fi
             for image_url in $IMAGE_URLS; do
               image_tag="${image_url}-${platform_key}"
-              echo "Testing image: $image_tag with test file: $DGOSS_TEST_FILE"
+              echo "Testing image: $image_tag with test file: $DGOSS_TEST_FILE on platform: $platform"
               export GOSS_FILE="$DGOSS_TEST_FILE"
-              # Set DGOSS_PLATFORM for non-native arch testing
               export DGOSS_PLATFORM="$platform"
               dgoss run "$image_tag" | tee -a dgoss-report.txt
             done
