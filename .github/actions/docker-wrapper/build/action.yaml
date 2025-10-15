@@ -1,5 +1,5 @@
-name: "Docker Build (Multi-Arch, Multi-Image)"
-description: "Builds Docker images for multiple platforms and image URLs using env vars only, with support for per-platform Dockerfiles and build args (file/env), comma-separated image URLs. Automatically sets up QEMU for cross-architecture builds."
+name: "Docker Build (Multi-Arch)"
+description: "Builds a multi-arch Docker image using a single Dockerfile. Supports env build args, comma-separated image URLs. Automatically sets up QEMU for cross-architecture builds."
 
 runs:
   using: "composite"
@@ -10,96 +10,25 @@ runs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 
-    - name: Build images for each platform and image (per-platform Dockerfile support)
+    - name: Build and Push Multi-Arch Image
       shell: bash
       run: |
         set -e
 
-        IMAGE_URLS="${GHA_CICD_DOCKER_IMAGE_URLS}"
+        IMAGE_URL="${GHA_CICD_DOCKER_IMAGE_URL}"
         DOCKER_CONTEXT="${GHA_CICD_DOCKER_CONTEXT:-.}"
-        PLATFORMS="${GHA_CICD_DOCKER_PLATFORMS}"
+        DOCKERFILE_PATH="${GHA_CICD_DOCKERFILE_PATH:-Dockerfile}"
 
-        IFS=',' read -ra image_url_list <<< "$IMAGE_URLS"
+        BUILD_ARG_OPTIONS=$(python3 "$GITHUB_ACTION_PATH/prepare_build_args.py" | tail -n 1)
 
-        build_image() {
-          local image_url="$1"
-          local platform="$2"
-          local platform_key="$3"
+        echo "::group::Building $IMAGE_URL for multi-arch ($DOCKERFILE_PATH)"
 
-          export PLATFORM_KEY="$platform_key"
-          DOCKERFILE_PATH_VAR="GHA_CICD_DOCKERFILE_PATH_${platform_key}"
-          DOCKERFILE_PATH="${!DOCKERFILE_PATH_VAR:-$GHA_CICD_DOCKERFILE_PATH:-Dockerfile}"
-          BUILD_ARG_OPTIONS=$(python3 "$GITHUB_ACTION_PATH/prepare_build_args.py" | tail -n 1)
+        docker buildx build \
+          --platform linux/amd64,linux/arm64 \
+          --file "$DOCKERFILE_PATH" \
+          $BUILD_ARG_OPTIONS \
+          -t "$IMAGE_URL" \
+          --push \
+          "$DOCKER_CONTEXT"
 
-          local image_tag="$image_url"
-          if [ -n "$platform_key" ]; then
-            image_tag="${image_url}-${platform_key}"
-          fi
-          local tar_file="${image_tag//[:\/]/_}.tar"
-
-          if [ -n "$platform" ]; then
-            echo "::group::Building $image_tag for $platform with $DOCKERFILE_PATH"
-          else
-            echo "::group::Building $image_tag (default platform) with $DOCKERFILE_PATH"
-          fi
-
-          echo "[INFO] docker buildx build --platform \"$platform\" --file \"$DOCKERFILE_PATH\" $BUILD_ARG_OPTIONS -t \"$image_tag\" --output type=tar,dest=\"$tar_file\" --push=false --load \"$DOCKER_CONTEXT\""
-
-          docker buildx build \
-            ${platform:+--platform "$platform"} \
-            --file "$DOCKERFILE_PATH" \
-            $BUILD_ARG_OPTIONS \
-            -t "$image_tag" \
-            --output type=tar,dest="$tar_file" \
-            --push=false \
-            --load \
-            "$DOCKER_CONTEXT"
-
-          echo "Built $image_tag, saved as $tar_file"
-          echo "::endgroup::"
-        }
-
-        if [ -z "$PLATFORMS" ]; then
-          for image_url in "${image_url_list[@]}"; do
-            export PLATFORM_KEY=""
-            DOCKERFILE_PATH="${GHA_CICD_DOCKERFILE_PATH:-Dockerfile}"
-            build_image "$image_url" "" ""
-          done
-        else
-          IFS=',' read -ra platform_list <<< "$PLATFORMS"
-          for raw_platform in "${platform_list[@]}"; do
-            platform="$(echo "$raw_platform" | xargs)"
-            [ -z "$platform" ] && continue
-            platform_key="${platform//\//_}"
-            for image_url in "${image_url_list[@]}"; do
-              build_image "$image_url" "$platform" "$platform_key"
-            done
-          done
-        fi
-
-    - name: Simple Debug - Image Architecture
-      shell: bash
-      run: |
-        echo "::group::Simple Debug - Image Architecture"
-        IMAGE_URLS="${GHA_CICD_DOCKER_IMAGE_URLS}"
-        PLATFORMS="${GHA_CICD_DOCKER_PLATFORMS}"
-
-        IFS=',' read -ra image_url_list <<< "$IMAGE_URLS"
-
-        if [ -z "$PLATFORMS" ]; then
-          for image_url in "${image_url_list[@]}"; do
-            echo "Image: $image_url"
-            docker image inspect "$image_url" --format='Architecture: {{.Architecture}}, OS: {{.Os}}' || echo "Image not found: $image_url"
-          done
-        else
-          IFS=',' read -ra platform_list <<< "$PLATFORMS"
-          for raw_platform in "${platform_list[@]}"; do
-            platform_key="${raw_platform//\//_}"
-            for image_url in "${image_url_list[@]}"; do
-              image_tag="${image_url}-${platform_key}"
-              echo "Image: $image_tag"
-              docker image inspect "$image_tag" --format='Architecture: {{.Architecture}}, OS: {{.Os}}' || echo "Image not found: $image_tag"
-            done
-          done
-        fi
         echo "::endgroup::"

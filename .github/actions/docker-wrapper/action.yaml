@@ -84,7 +84,7 @@ runs:
           GHA_CICD_DOCKER_CONTEXT: "${{ env.GHA_CICD_DOCKER_CONTEXT }}"
           GHA_CICD_DOCKER_BUILD_ARGS: "${{ env.GHA_CICD_DOCKER_BUILD_ARGS }}"
           GHA_CICD_DOCKER_PUSH_URLS: "${{ env.GHA_CICD_DOCKER_PUSH_URLS }}"
-          # Multi Line secret causing yaml parsing error
+          GHA_CICD_HADOLINT_CONFIG: "${{ env.GHA_CICD_HADOLINT_CONFIG }}"
           GHA_CICD_DOCKER_CONFIG_JSON: "${{ env.GHA_CICD_DOCKER_CONFIG_JSON != '' }}"
         requiredInputs: |
           - run_lint
@@ -93,13 +93,15 @@ runs:
           - run_scan
           - run_publish
           - GHA_CICD_DOCKER_CONTEXT
-        optionalInputs: |
           - GHA_CICD_DOCKERFILE_PATH
+        optionalInputs: |
           - GHA_CICD_DOCKER_BUILD_ARGS
           - GHA_CICD_DOCKER_PUSH_URLS
           - GHA_CICD_DOCKER_CONFIG_JSON
+          - GHA_CICD_HADOLINT_CONFIG
         filesPathInputs: |
           - GHA_CICD_DOCKERFILE_PATH
+          - GHA_CICD_HADOLINT_CONFIG
         typeValidations: |
           booleanString:
             - run_lint
@@ -113,14 +115,13 @@ runs:
             - GHA_CICD_DOCKER_BUILD_ARGS
             - GHA_CICD_DOCKER_PUSH_URLS
             - GHA_CICD_DOCKER_CONFIG_JSON
+            - GHA_CICD_HADOLINT_CONFIG
         dependencyValidations: |
           run_publish:
             expectedValue: "true"
             dependentInputs:
               - GHA_CICD_DOCKER_PUSH_URLS
               - GHA_CICD_DOCKER_CONFIG_JSON
-
-
 
     - name: Lint (Docker)
       if: ${{ inputs.run_lint == 'true' }}
@@ -149,5 +150,4 @@ runs:
 
     - name: Publish (Docker)
       if: ${{ inputs.run_publish == 'true' }}
-
       uses: ./cicd-shared-lib/.github/actions/docker-wrapper/publish

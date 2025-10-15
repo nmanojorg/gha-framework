@@ -1,71 +1,36 @@
 name: "Lint (Docker)"
-description: "Lint Dockerfile(s) using Hadolint Docker image. Supports per-platform Dockerfile paths and Hadolint configs. All config via GHA_CICD_ env vars. Groups output and uses GitHub logging functions for better visibility."
+description: "Lint a single Dockerfile using Hadolint. All config via GHA_CICD_ env vars. Groups output and uses GitHub logging functions for better visibility."
 
 runs:
   using: "composite"
   steps:
-    - name: Hadolint Linting (Multi-Arch Support)
+    - name: Hadolint Linting
       shell: bash
       run: |
         echo "::group::Hadolint Linting Start"
 
-        PLATFORMS="${GHA_CICD_DOCKER_PLATFORMS:-}"
+        DOCKERFILE="${GHA_CICD_DOCKERFILE_PATH:-Dockerfile}"
         HADOLINT_IMAGE="${GHA_CICD_HADOLINT_IMAGE:-hadolint/hadolint:latest}"
+        HADOLINT_CONFIG="${GHA_CICD_HADOLINT_CONFIG:-}"
 
-        if [ -z "$PLATFORMS" ]; then
-          DOCKERFILE="${GHA_CICD_DOCKERFILE_PATH:-Dockerfile}"
-          HADOLINT_CONFIG="${GHA_CICD_HADOLINT_CONFIG:-}"
-
-          echo "Linting Dockerfile: $DOCKERFILE"
-          if [ -n "$HADOLINT_CONFIG" ]; then
-            echo "Hadolint config: $HADOLINT_CONFIG"
-          else
-            echo "No Hadolint config file provided. Using default rules."
-          fi
-
-          echo "::group::Hadolint Version"
-          docker run --rm $HADOLINT_IMAGE hadolint --version | tee hadolint-report.txt
-          echo "::endgroup::"
-
-          echo "::group::Linting Output"
-          if [ -n "$HADOLINT_CONFIG" ] && [ -f "$HADOLINT_CONFIG" ]; then
-            docker run --rm -v "$GITHUB_WORKSPACE:/mnt" $HADOLINT_IMAGE hadolint --config "/mnt/$HADOLINT_CONFIG" "/mnt/$DOCKERFILE" | tee -a hadolint-report.txt
-          else
-            docker run --rm -v "$GITHUB_WORKSPACE:/mnt" $HADOLINT_IMAGE hadolint "/mnt/$DOCKERFILE" | tee -a hadolint-report.txt
-          fi
-          echo "::endgroup::"
+        echo "Linting Dockerfile: $DOCKERFILE"
+        if [ -n "$HADOLINT_CONFIG" ]; then
+          echo "Hadolint config: $HADOLINT_CONFIG"
         else
-          IFS=',' read -ra platform_list <<< "$PLATFORMS"
-          for raw_platform in "${platform_list[@]}"; do
-            platform="$(echo "$raw_platform" | xargs)"
-            [ -z "$platform" ] && continue
-            platform_key="${platform//\//_}"
-            DOCKERFILE_VAR="GHA_CICD_DOCKERFILE_PATH_${platform_key}"
-            DOCKERFILE="${!DOCKERFILE_VAR:-$GHA_CICD_DOCKERFILE_PATH}"
-
-            HADOLINT_CONFIG_VAR="GHA_CICD_HADOLINT_CONFIG_${platform_key}"
-            HADOLINT_CONFIG="${!HADOLINT_CONFIG_VAR:-$GHA_CICD_HADOLINT_CONFIG}"
-
-            echo "Linting Dockerfile for $platform ($DOCKERFILE)"
-            if [ -n "$HADOLINT_CONFIG" ]; then
-              echo "Hadolint config: $HADOLINT_CONFIG"
-            else
-              echo "No Hadolint config file provided. Using default rules."
-            fi
-
-            echo "::group::Hadolint Version"
-            docker run --rm $HADOLINT_IMAGE hadolint --version | tee -a hadolint-report.txt
-            echo "::endgroup::"
-
-            echo "::group::Linting Output ($platform)"
-            if [ -n "$HADOLINT_CONFIG" ] && [ -f "$HADOLINT_CONFIG" ]; then
-              docker run --rm -v "$GITHUB_WORKSPACE:/mnt" $HADOLINT_IMAGE hadolint --config "/mnt/$HADOLINT_CONFIG" "/mnt/$DOCKERFILE" | tee -a hadolint-report.txt
-            else
-              docker run --rm -v "$GITHUB_WORKSPACE:/mnt" $HADOLINT_IMAGE hadolint "/mnt/$DOCKERFILE" | tee -a hadolint-report.txt
-            fi
-            echo "::endgroup::"
-          done
+          echo "No Hadolint config file provided. Using default rules."
         fi
+
+        echo "::group::Hadolint Version"
+        docker run --rm $HADOLINT_IMAGE hadolint --version | tee hadolint-report.txt
+        echo "::endgroup::"
+
+        echo "::group::Linting Output"
+        if [ -n "$HADOLINT_CONFIG" ] && [ -f "$HADOLINT_CONFIG" ]; then
+          docker run --rm -v "$GITHUB_WORKSPACE:/mnt" $HADOLINT_IMAGE hadolint --config "/mnt/$HADOLINT_CONFIG" "/mnt/$DOCKERFILE" | tee -a hadolint-report.txt
+        else
+          docker run --rm -v "$GITHUB_WORKSPACE:/mnt" $HADOLINT_IMAGE hadolint "/mnt/$DOCKERFILE" | tee -a hadolint-report.txt
+        fi
+        echo "::endgroup::"
 
         echo "::endgroup::Hadolint Linting End"
 
