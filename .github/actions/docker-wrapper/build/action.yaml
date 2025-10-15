@@ -1,5 +1,5 @@
 name: "Docker Build (Multi-Arch, Multi-Image)"
-description: "Builds Docker images for multiple platforms and image URLs using env vars only, with support for per-platform Dockerfiles. Automatically sets up QEMU for cross-architecture builds."
+description: "Builds Docker images for multiple platforms and image URLs using env vars only, with support for per-platform Dockerfiles and build args (file/env), comma-separated image URLs. Automatically sets up QEMU for cross-architecture builds."
 
 runs:
   using: "composite"
@@ -18,6 +18,8 @@ runs:
         IMAGE_URLS="${GHA_CICD_DOCKER_IMAGE_URLS}"
         DOCKER_CONTEXT="${GHA_CICD_DOCKER_CONTEXT:-.}"
         PLATFORMS="${GHA_CICD_DOCKER_PLATFORMS}"
+
+        IFS=',' read -ra image_url_list <<< "$IMAGE_URLS"
 
         build_image() {
           local image_url="$1"
@@ -64,7 +66,7 @@ runs:
         }
 
         if [ -z "$PLATFORMS" ]; then
-          for image_url in $IMAGE_URLS; do
+          for image_url in "${image_url_list[@]}"; do
             build_image "$image_url" "" ""
           done
         else
@@ -73,7 +75,7 @@ runs:
             platform="$(echo "$raw_platform" | xargs)"
             [ -z "$platform" ] && continue
             platform_key="${platform//\//_}"
-            for image_url in $IMAGE_URLS; do
+            for image_url in "${image_url_list[@]}"; do
               build_image "$image_url" "$platform" "$platform_key"
             done
           done
@@ -86,18 +88,18 @@ runs:
         IMAGE_URLS="${GHA_CICD_DOCKER_IMAGE_URLS}"
         PLATFORMS="${GHA_CICD_DOCKER_PLATFORMS}"
 
+        IFS=',' read -ra image_url_list <<< "$IMAGE_URLS"
+
         if [ -z "$PLATFORMS" ]; then
-          for image_url in $IMAGE_URLS; do
+          for image_url in "${image_url_list[@]}"; do
             echo "Image: $image_url"
             docker image inspect "$image_url" --format='Architecture: {{.Architecture}}, OS: {{.Os}}' || echo "Image not found: $image_url"
           done
         else
           IFS=',' read -ra platform_list <<< "$PLATFORMS"
           for raw_platform in "${platform_list[@]}"; do
-            platform="$(echo "$raw_platform" | xargs)"
-            [ -z "$platform" ] && continue
-            platform_key="${platform//\//_}"
-            for image_url in $IMAGE_URLS; do
+            platform_key="${raw_platform//\//_}"
+            for image_url in "${image_url_list[@]}"; do
               image_tag="${image_url}-${platform_key}"
               echo "Image: $image_tag"
               docker image inspect "$image_tag" --format='Architecture: {{.Architecture}}, OS: {{.Os}}' || echo "Image not found: $image_tag"

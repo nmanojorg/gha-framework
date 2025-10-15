@@ -1,5 +1,5 @@
 name: "Lint (Docker)"
-description: "Lint Dockerfile(s) using Hadolint Docker image. All configuration/secrets via environment variables (GHA_CICD_ prefix). Groups output and uses GitHub logging functions for better visibility. Supports per-platform Dockerfile paths."
+description: "Lint Dockerfile(s) using Hadolint Docker image. Supports per-platform Dockerfile paths and Hadolint configs. All config via GHA_CICD_ env vars. Groups output and uses GitHub logging functions for better visibility."
 
 runs:
   using: "composite"
@@ -7,19 +7,18 @@ runs:
     - name: Hadolint Linting (Multi-Arch Support)
       shell: bash
       run: |
-        echo "::group::?? Hadolint Linting Start"
+        echo "::group::Hadolint Linting Start"
 
-        # Accept comma-separated platforms or fallback to single/default
         PLATFORMS="${GHA_CICD_DOCKER_PLATFORMS:-}"
-        CONFIG_PATH="${GHA_CICD_HADOLINT_CONFIG:-}"
         HADOLINT_IMAGE="${GHA_CICD_HADOLINT_IMAGE:-hadolint/hadolint:latest}"
 
-        # If no platforms, just lint the default Dockerfile
         if [ -z "$PLATFORMS" ]; then
           DOCKERFILE="${GHA_CICD_DOCKERFILE_PATH:-Dockerfile}"
+          HADOLINT_CONFIG="${GHA_CICD_HADOLINT_CONFIG:-}"
+
           echo "Linting Dockerfile: $DOCKERFILE"
-          if [ -n "$CONFIG_PATH" ]; then
-            echo "Hadolint config: $CONFIG_PATH"
+          if [ -n "$HADOLINT_CONFIG" ]; then
+            echo "Hadolint config: $HADOLINT_CONFIG"
           else
             echo "No Hadolint config file provided. Using default rules."
           fi
@@ -29,8 +28,8 @@ runs:
           echo "::endgroup::"
 
           echo "::group::Linting Output"
-          if [ -n "$CONFIG_PATH" ] && [ -f "$CONFIG_PATH" ]; then
-            docker run --rm -v "$GITHUB_WORKSPACE:/mnt" $HADOLINT_IMAGE hadolint --config "/mnt/$CONFIG_PATH" "/mnt/$DOCKERFILE" | tee -a hadolint-report.txt
+          if [ -n "$HADOLINT_CONFIG" ] && [ -f "$HADOLINT_CONFIG" ]; then
+            docker run --rm -v "$GITHUB_WORKSPACE:/mnt" $HADOLINT_IMAGE hadolint --config "/mnt/$HADOLINT_CONFIG" "/mnt/$DOCKERFILE" | tee -a hadolint-report.txt
           else
             docker run --rm -v "$GITHUB_WORKSPACE:/mnt" $HADOLINT_IMAGE hadolint "/mnt/$DOCKERFILE" | tee -a hadolint-report.txt
           fi
@@ -44,9 +43,12 @@ runs:
             DOCKERFILE_VAR="GHA_CICD_DOCKERFILE_PATH_${platform_key}"
             DOCKERFILE="${!DOCKERFILE_VAR:-$GHA_CICD_DOCKERFILE_PATH}"
 
+            HADOLINT_CONFIG_VAR="GHA_CICD_HADOLINT_CONFIG_${platform_key}"
+            HADOLINT_CONFIG="${!HADOLINT_CONFIG_VAR:-$GHA_CICD_HADOLINT_CONFIG}"
+
             echo "Linting Dockerfile for $platform ($DOCKERFILE)"
-            if [ -n "$CONFIG_PATH" ]; then
-              echo "Hadolint config: $CONFIG_PATH"
+            if [ -n "$HADOLINT_CONFIG" ]; then
+              echo "Hadolint config: $HADOLINT_CONFIG"
             else
               echo "No Hadolint config file provided. Using default rules."
             fi
@@ -56,8 +58,8 @@ runs:
             echo "::endgroup::"
 
             echo "::group::Linting Output ($platform)"
-            if [ -n "$CONFIG_PATH" ] && [ -f "$CONFIG_PATH" ]; then
-              docker run --rm -v "$GITHUB_WORKSPACE:/mnt" $HADOLINT_IMAGE hadolint --config "/mnt/$CONFIG_PATH" "/mnt/$DOCKERFILE" | tee -a hadolint-report.txt
+            if [ -n "$HADOLINT_CONFIG" ] && [ -f "$HADOLINT_CONFIG" ]; then
+              docker run --rm -v "$GITHUB_WORKSPACE:/mnt" $HADOLINT_IMAGE hadolint --config "/mnt/$HADOLINT_CONFIG" "/mnt/$DOCKERFILE" | tee -a hadolint-report.txt
             else
               docker run --rm -v "$GITHUB_WORKSPACE:/mnt" $HADOLINT_IMAGE hadolint "/mnt/$DOCKERFILE" | tee -a hadolint-report.txt
             fi
@@ -65,7 +67,7 @@ runs:
           done
         fi
 
-        echo "::endgroup::?? Hadolint Linting End"
+        echo "::endgroup::Hadolint Linting End"
 
     - name: Upload Hadolint Report
       uses: actions/upload-artifact@v4

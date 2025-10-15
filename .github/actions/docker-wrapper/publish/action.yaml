@@ -1,59 +1,57 @@
 name: "Publish Multi-Arch Docker Images"
-description: "Creates and pushes a multi-arch manifest for all platform images under the main image URL(s) passed in GHA_CICD_DOCKER_IMAGE_URLS."
+description: "Pushes multi-arch Docker images to registry using Docker buildx. Handles per-platform Dockerfile and build args from both file and env. No per-platform tags, pushes only unified image URLs from GHA_CICD_DOCKER_IMAGE_URLS (comma separated)."
 
 runs:
   using: "composite"
   steps:
-    - name: Push platform images
+    - name: Set up QEMU (for cross-arch builds)
+      uses: docker/setup-qemu-action@v3
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build and Push Multi-Arch Images (comma separated image URLs)
       shell: bash
       run: |
         set -e
         IMAGE_URLS="${GHA_CICD_DOCKER_IMAGE_URLS}"
-        PLATFORMS="${GHA_CICD_DOCKER_PLATFORMS}"
+        PLATFORMS="${GHA_CICD_DOCKER_PLATFORMS:-}"
+        DOCKER_CONTEXT="${GHA_CICD_DOCKER_CONTEXT:-.}"
 
-        if [ -z "$IMAGE_URLS" ]; then
-          echo "No images to push. Set GHA_CICD_DOCKER_IMAGE_URLS."
-          exit 1
-        fi
+        IFS=',' read -ra image_url_list <<< "$IMAGE_URLS"
 
         if [ -z "$PLATFORMS" ]; then
-          echo "No platforms specified. Cannot create manifest."
-          exit 1
-        fi
+          # Single arch publish
+          for image_url in "${image_url_list[@]}"; do
+            DOCKERFILE_PATH="${GHA_CICD_DOCKERFILE_PATH:-Dockerfile}"
+            BUILD_ARG_OPTIONS=$(python3 "$GITHUB_ACTION_PATH/prepare_build_args.py" | tail -n 1)
 
-        IFS=',' read -ra platform_list <<< "$PLATFORMS"
-        for image_url in $IMAGE_URLS; do
-          for raw_platform in "${platform_list[@]}"; do
-            platform_key="${raw_platform//\//_}"
-            platform_image="${image_url}-${platform_key}"
-            echo "::group::Pushing platform image $platform_image"
-            docker push "$platform_image"
+            echo "::group::Publishing $image_url (single arch)"
+            docker buildx build \
+              -t "$image_url" \
+              --file "$DOCKERFILE_PATH" \
+              $BUILD_ARG_OPTIONS \
+              --push \
+              "$DOCKER_CONTEXT"
             echo "::endgroup::"
           done
+        else
+          # Multi-arch publish
+          for image_url in "${image_url_list[@]}"; do
+            DOCKERFILE_PATH="${GHA_CICD_DOCKERFILE_PATH:-Dockerfile}"
+            BUILD_ARG_OPTIONS=$(python3 "$GITHUB_ACTION_PATH/prepare_build_args.py" | tail -n 1)
 
-          # Create manifest list for the main image tag
-          manifest_create_args=""
-          for raw_platform in "${platform_list[@]}"; do
-            platform_key="${raw_platform//\//_}"
-            platform_image="${image_url}-${platform_key}"
-            manifest_create_args="$manifest_create_args $platform_image"
+            echo "::group::Publishing $image_url for platforms: $PLATFORMS"
+            docker buildx build \
+              --platform "$PLATFORMS" \
+              -t "$image_url" \
+              --file "$DOCKERFILE_PATH" \
+              $BUILD_ARG_OPTIONS \
+              --push \
+              "$DOCKER_CONTEXT"
+            echo "::endgroup::"
           done
-
-          echo "::group::Creating manifest $image_url with:"
-          echo $manifest_create_args
-          docker manifest create "$image_url" $manifest_create_args
-
-          # Annotate each platform image (optional but recommended)
-          for raw_platform in "${platform_list[@]}"; do
-            platform_key="${raw_platform//\//_}"
-            platform_image="${image_url}-${platform_key}"
-            arch=$(echo "$raw_platform" | cut -d'/' -f2)
-            docker manifest annotate "$image_url" "$platform_image" --arch "$arch"
-          done
-
-          docker manifest push "$image_url"
-          echo "::endgroup::"
-        done
+        fi
 
     - name: Logout from Docker (cleanup)
       shell: bash
