@@ -10,7 +10,7 @@ runs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 
-    - name: Build images for each platform and image
+    - name: Build images for each platform and image (per-platform Dockerfile support)
       shell: bash
       run: |
         set -e
@@ -27,15 +27,9 @@ runs:
           local platform_key="$3"
 
           export PLATFORM_KEY="$platform_key"
+          DOCKERFILE_PATH_VAR="GHA_CICD_DOCKERFILE_PATH_${platform_key}"
+          DOCKERFILE_PATH="${!DOCKERFILE_PATH_VAR:-$GHA_CICD_DOCKERFILE_PATH:-Dockerfile}"
           BUILD_ARG_OPTIONS=$(python3 "$GITHUB_ACTION_PATH/prepare_build_args.py" | tail -n 1)
-
-          # Select the Dockerfile path for the platform, or fallback to generic
-          if [ -n "$platform_key" ]; then
-            DOCKERFILE_PATH_VAR="GHA_CICD_DOCKERFILE_PATH_${platform_key}"
-            DOCKERFILE_PATH="${!DOCKERFILE_PATH_VAR:-$GHA_CICD_DOCKERFILE_PATH}"
-          else
-            DOCKERFILE_PATH="$GHA_CICD_DOCKERFILE_PATH"
-          fi
 
           local image_tag="$image_url"
           if [ -n "$platform_key" ]; then
@@ -44,9 +38,9 @@ runs:
           local tar_file="${image_tag//[:\/]/_}.tar"
 
           if [ -n "$platform" ]; then
-            echo "::group::Building $image_tag for $platform"
+            echo "::group::Building $image_tag for $platform with $DOCKERFILE_PATH"
           else
-            echo "::group::Building $image_tag (default platform)"
+            echo "::group::Building $image_tag (default platform) with $DOCKERFILE_PATH"
           fi
 
           echo "[INFO] docker buildx build --platform \"$platform\" --file \"$DOCKERFILE_PATH\" $BUILD_ARG_OPTIONS -t \"$image_tag\" --output type=tar,dest=\"$tar_file\" --push=false --load \"$DOCKER_CONTEXT\""
@@ -67,6 +61,8 @@ runs:
 
         if [ -z "$PLATFORMS" ]; then
           for image_url in "${image_url_list[@]}"; do
+            export PLATFORM_KEY=""
+            DOCKERFILE_PATH="${GHA_CICD_DOCKERFILE_PATH:-Dockerfile}"
             build_image "$image_url" "" ""
           done
         else
