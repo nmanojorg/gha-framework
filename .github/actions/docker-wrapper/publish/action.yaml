@@ -1,5 +1,5 @@
 name: "Publish Multi-Arch Docker Images"
-description: "Pushes multi-arch Docker images to registry using Docker buildx, with per-platform Dockerfile and build args. Only unified image URLs from GHA_CICD_DOCKER_IMAGE_URLS (comma-separated)."
+description: "Pushes multi-arch Docker images to registry using docker/build-push-action. Accepts comma-separated image URLs as tags and platforms. Build args are formed in a separate step and passed as a list."
 
 runs:
   using: "composite"
@@ -10,58 +10,24 @@ runs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 
-    - name: Build and Push Each Arch Separately (per-platform Dockerfile)
+    - name: Prepare build args list
+      id: prep_build_args
       shell: bash
       run: |
-        set -e
-        IMAGE_URLS="${GHA_CICD_DOCKER_IMAGE_URLS}"
-        PLATFORMS="${GHA_CICD_DOCKER_PLATFORMS:-}"
-        DOCKER_CONTEXT="${GHA_CICD_DOCKER_CONTEXT:-.}"
+        python3 "$GITHUB_ACTION_PATH/prepare_build_args.py" > build_args_list.txt
+        echo "build_args<<EOF" >> $GITHUB_OUTPUT
+        cat build_args_list.txt >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
 
-        IFS=',' read -ra image_url_list <<< "$IMAGE_URLS"
-
-        if [ -z "$PLATFORMS" ]; then
-          # Single arch publish
-          for image_url in "${image_url_list[@]}"; do
-            DOCKERFILE_PATH="${GHA_CICD_DOCKERFILE_PATH:-Dockerfile}"
-            export PLATFORM_KEY=""
-            BUILD_ARG_OPTIONS=$(python3 "$GITHUB_ACTION_PATH/prepare_build_args.py" | tail -n 1)
-
-            echo "::group::Publishing $image_url (single arch)"
-            docker buildx build \
-              -t "$image_url" \
-              --file "$DOCKERFILE_PATH" \
-              $BUILD_ARG_OPTIONS \
-              --push \
-              "$DOCKER_CONTEXT"
-            echo "::endgroup::"
-          done
-        else
-          # Multi-arch: build and push each platform separately with its Dockerfile and args, under same image tag
-          IFS=',' read -ra platform_list <<< "$PLATFORMS"
-          for raw_platform in "${platform_list[@]}"; do
-            platform="$(echo "$raw_platform" | xargs)"
-            [ -z "$platform" ] && continue
-            platform_key="${platform//\//_}"
-
-            DOCKERFILE_VAR="GHA_CICD_DOCKERFILE_PATH_${platform_key}"
-            DOCKERFILE_PATH="${!DOCKERFILE_VAR:-$GHA_CICD_DOCKERFILE_PATH:-Dockerfile}"
-            export PLATFORM_KEY="$platform_key"
-            BUILD_ARG_OPTIONS=$(python3 "$GITHUB_ACTION_PATH/prepare_build_args.py" | tail -n 1)
-
-            for image_url in "${image_url_list[@]}"; do
-              echo "::group::Publishing $image_url for $platform ($DOCKERFILE_PATH)"
-              docker buildx build \
-                --platform "$platform" \
-                -t "$image_url" \
-                --file "$DOCKERFILE_PATH" \
-                $BUILD_ARG_OPTIONS \
-                --push \
-                "$DOCKER_CONTEXT"
-              echo "::endgroup::"
-            done
-          done
-        fi
+    - name: Push Multi-Arch Image(s) to Registry (single step, all tags)
+      uses: docker/build-push-action@v5
+      with:
+        context: ${{ env.GHA_CICD_DOCKER_CONTEXT }}
+        file: ${{ env.GHA_CICD_DOCKERFILE_PATH}}
+        platforms: ${{ env.GHA_CICD_DOCKER_PLATFORMS}}
+        tags: ${{ env.GHA_CICD_DOCKER_IMAGE_URLS }}
+        build-args: ${{ steps.prep_build_args.outputs.build_args }}
+        push: true
 
     - name: Logout from Docker (cleanup)
       shell: bash

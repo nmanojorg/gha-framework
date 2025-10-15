@@ -1,5 +1,5 @@
-name: "Docker Build (Multi-Arch)"
-description: "Builds a multi-arch Docker image using a single Dockerfile. Supports env build args, comma-separated image URLs. Automatically sets up QEMU for cross-architecture builds."
+name: "Docker Build (Multi-Arch, Per-Arch Load)"
+description: "Builds Docker images for multiple platforms and image URLs using a single Dockerfile and env vars only, with per-arch local load for testing. Automatically sets up QEMU for cross-architecture builds."
 
 runs:
   using: "composite"
@@ -10,25 +10,62 @@ runs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 
-    - name: Build and Push Multi-Arch Image
+    - name: Build and Load Images Per Platform (single Dockerfile, no push)
       shell: bash
       run: |
         set -e
 
-        IMAGE_URL="${GHA_CICD_DOCKER_IMAGE_URL}"
-        DOCKER_CONTEXT="${GHA_CICD_DOCKER_CONTEXT:-.}"
-        DOCKERFILE_PATH="${GHA_CICD_DOCKERFILE_PATH:-Dockerfile}"
+        IMAGE_URLS="${GHA_CICD_DOCKER_IMAGE_URLS}"
+        DOCKER_CONTEXT="${GHA_CICD_DOCKER_CONTEXT}"
+        DOCKERFILE_PATH="${GHA_CICD_DOCKERFILE_PATH}"
+        PLATFORMS="${GHA_CICD_DOCKER_PLATFORMS}"
 
         BUILD_ARG_OPTIONS=$(python3 "$GITHUB_ACTION_PATH/prepare_build_args.py" | tail -n 1)
 
-        echo "::group::Building $IMAGE_URL for multi-arch ($DOCKERFILE_PATH)"
+        IFS=',' read -ra image_url_list <<< "$IMAGE_URLS"
+        IFS=',' read -ra platform_list <<< "$PLATFORMS"
 
-        docker buildx build \
-          --platform linux/amd64,linux/arm64 \
-          --file "$DOCKERFILE_PATH" \
-          $BUILD_ARG_OPTIONS \
-          -t "$IMAGE_URL" \
-          --push \
-          "$DOCKER_CONTEXT"
+        for image_url in "${image_url_list[@]}"; do
+          for platform in "${platform_list[@]}"; do
+            platform="$(echo "$platform" | xargs)"
+            platform_key="${platform//\//_}"
+            image_tag="${image_url}-${platform_key}"
+            tar_file="${image_tag//[:\/]/_}.tar"
+            echo "::group::Building and loading $image_tag for $platform with $DOCKERFILE_PATH"
+            docker buildx build \
+              --platform "$platform" \
+              --file "$DOCKERFILE_PATH" \
+              $BUILD_ARG_OPTIONS \
+              -t "$image_tag" \
+              --output type=tar,dest="$tar_file" \
+              --push=false \
+              --load \
+              "$DOCKER_CONTEXT"
+            
+            echo "Built and loaded $image_tag for $platform"
+            echo "::endgroup::"
+          done
+        done
+
+    - name: Simple Debug - Image Architecture
+      shell: bash
+      run: |
+        echo "::group::Simple Debug - Image Architecture"
+        IMAGE_URLS="${GHA_CICD_DOCKER_IMAGE_URLS}"
+        PLATFORMS="${GHA_CICD_DOCKER_PLATFORMS}"
+
+        IFS=',' read -ra image_url_list <<< "$IMAGE_URLS"
+        IFS=',' read -ra platform_list <<< "$PLATFORMS"
+
+        for image_url in "${image_url_list[@]}"; do
+          for platform in "${platform_list[@]}"; do
+            platform_key="${platform//\//_}"
+            image_tag="${image_url}-${platform_key}"
+            echo "Image: $image_tag (platform: $platform)"
+            docker image inspect "$image_tag" --format='Architecture: {{.Architecture}}, OS: {{.Os}}' || echo "Image not found: $image_tag"
+          done
+        done
+       
+        ls -ltr | grep tar
 
         echo "::endgroup::"

@@ -26,13 +26,8 @@ def get_args_from_env(env_args):
     return args
 
 if __name__ == "__main__":
-    platform_key = os.environ.get("PLATFORM_KEY", "")
-    if platform_key:
-        env_args = os.environ.get(f"GHA_CICD_DOCKER_BUILD_ARGS_{platform_key}", "")
-        file_path = os.environ.get(f"GHA_CICD_DOCKER_BUILD_ARGS_FILE_{platform_key}", "")
-    else:
-        env_args = os.environ.get("GHA_CICD_DOCKER_BUILD_ARGS", "")
-        file_path = os.environ.get("GHA_CICD_DOCKER_BUILD_ARGS_FILE", "")
+    env_args = os.environ.get("GHA_CICD_DOCKER_BUILD_ARGS", "")
+    file_path = os.environ.get("GHA_CICD_DOCKER_BUILD_ARGS_FILE", "")
     build_args = get_args_from_file(file_path) + get_args_from_env(env_args)
     if build_args:
         print(" ".join(build_args))
