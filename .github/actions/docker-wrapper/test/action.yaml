@@ -57,7 +57,7 @@ runs:
               echo "Testing image: $image_tag with test file: $DGOSS_TEST_FILE on platform: $platform"
               export GOSS_FILE="$DGOSS_TEST_FILE"
               # Use --platform argument for cross-architecture testing
-              dgoss run --entrypoint /tail --platform "$platform" "$image_tag" -f /dev/null | tee -a dgoss-report.txt
+              dgoss run --entrypoint tail --platform "$platform" "$image_tag" -f /dev/null | tee -a dgoss-report.txt
             done
           done
         fi
