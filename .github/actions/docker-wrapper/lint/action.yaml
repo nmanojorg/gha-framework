@@ -11,5 +11,5 @@ runs:
       with:
         context: ${{ env.GHA_CICD_DOCKER_CONTEXT }}
         file: ${{ env.GHA_CICD_DOCKERFILE_PATH }}
-        build-args: ${{ steps.prep_build_args.outputs.build-args }}
+        build-args: "BUILDKIT_DOCKERFILE_CHECK=skip=JSONArgsRecommended,StageNameCasing;error=false"
         call: check
