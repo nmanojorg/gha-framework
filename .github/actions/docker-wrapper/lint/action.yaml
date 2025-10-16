@@ -1,29 +1,26 @@
-
-# BUILDKIT_DOCKERFILE_CHECK=skip=ConsistentInstructionCasing ,StageNameCasing
-
 name: "Dockerfile Lint"
-description: "Validates Dockerfile syntax using docker/build-push-action@v6. The action fails if the Dockerfile or build context is invalid. You can skip specific lint checks by setting the GHA_CICD_DOCKERFILE_LINT_SKIP_CHECKS environment variable with a comma-separated list of rule names."
+description: |
+  Validates Dockerfile syntax using Docker BuildKit.
+  Fails if the Dockerfile or build context is invalid.
+  You can skip specific lint checks by setting the GHA_CICD_DOCKERFILE_LINT_SKIP_CHECKS environment variable.
 runs:
   using: "composite"
   steps:
-
-    - name: Lint Dockerfile Syntax
+    - name: Group: Lint Dockerfile (BuildKit Syntax Check)
       shell: bash
       run: |
-          docker build --check --file "$GHA_CICD_DOCKERFILE_PATH" --build-arg "BUILDKIT_DOCKERFILE_CHECK=skip=${GHA_CICD_DOCKERFILE_LINT_SKIP_CHECKS}" "$GHA_CICD_DOCKER_CONTEXT" > docker_lint_output.txt
+        echo "::group::Dockerfile Linting"
+        echo "==> Starting lint for Dockerfile: $GHA_CICD_DOCKERFILE_PATH"
+        docker build --check \
+          --file "$GHA_CICD_DOCKERFILE_PATH" \
+          --build-arg "BUILDKIT_DOCKERFILE_CHECK=skip=${GHA_CICD_DOCKERFILE_LINT_SKIP_CHECKS}" \
+          "$GHA_CICD_DOCKER_CONTEXT" 2>&1 | tee docker_lint_output.txt
+        echo "::endgroup::"
 
-
-    #  uses: docker/build-push-action@v6
-    #  with:
-    #    context: ${{ env.GHA_CICD_DOCKER_CONTEXT }}
-    #    file: ${{ env.GHA_CICD_DOCKERFILE_PATH }}
-    #    build-args: "BUILDKIT_DOCKERFILE_CHECK=skip=${{ env.GHA_CICD_DOCKERFILE_LINT_SKIP_CHECKS }}"
-    #    call: check
-
-    - name: Upload Xray Report
+    - name: Upload Dockerfile Lint Report Artifact
       uses: actions/upload-artifact@v4
       if: ${{ !cancelled() }}
       with:
-        name: xray-report-${{ github.run_id }}-${{ github.job }}
+        name: dockerfile-lint-report-${{ github.run_id }}-${{ github.job }}
         path: docker_lint_output.txt
         overwrite: true
