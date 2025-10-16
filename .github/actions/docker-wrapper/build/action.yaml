@@ -21,7 +21,7 @@ runs:
       with:
         context: ${{ env.GHA_CICD_DOCKER_CONTEXT }}
         file: ${{ env.GHA_CICD_DOCKERFILE_PATH }}
-        tags: ${{ env.GHA_CICD_DOCKER_IMAGE_URLS }}
+        tags: ${{ env.GHA_CICD_LOCAL_IMAGE_NAME }}
         build-args: ${{ steps.prep_build_args.outputs.build-args }}
         outputs: type=tar,dest=docker-image.tar
         push: false
