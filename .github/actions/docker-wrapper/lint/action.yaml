@@ -10,8 +10,7 @@ runs:
     - name: Lint Dockerfile Syntax
       shell: bash
       run: |
-          set +e
-          docker build --check --file "$GHA_CICD_DOCKERFILE_PATH" --build-arg "BUILDKIT_DOCKERFILE_CHECK=skip=${GHA_CICD_DOCKERFILE_LINT_SKIP_CHECKS}" "$GHA_CICD_DOCKER_CONTEXT" > docker_lint_output.txt 2>&1
+          docker build --check --file "$GHA_CICD_DOCKERFILE_PATH" --build-arg "BUILDKIT_DOCKERFILE_CHECK=skip=${GHA_CICD_DOCKERFILE_LINT_SKIP_CHECKS}" "$GHA_CICD_DOCKER_CONTEXT" > docker_lint_output.txt
 
 
     #  uses: docker/build-push-action@v6
@@ -23,7 +22,7 @@ runs:
 
     - name: Upload Xray Report
       uses: actions/upload-artifact@v4
-      if: ${{ !cancelled() && env.GHA_CICD_RUN_XRAY_SCAN == 'true' }}
+      if: ${{ !cancelled() }}
       with:
         name: xray-report-${{ github.run_id }}-${{ github.job }}
         path: docker_lint_output.txt
