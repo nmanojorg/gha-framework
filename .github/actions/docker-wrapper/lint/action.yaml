@@ -11,7 +11,7 @@ runs:
       shell: bash
       run: |
           set +e
-          docker build --file "$GHA_CICD_DOCKERFILE_PATH" --build-arg "BUILDKIT_DOCKERFILE_CHECK=skip=${GHA_CICD_DOCKERFILE_LINT_SKIP_CHECKS}" "$GHA_CICD_DOCKER_CONTEXT" > docker_lint_output.txt 2>&1
+          docker build --check --file "$GHA_CICD_DOCKERFILE_PATH" --build-arg "BUILDKIT_DOCKERFILE_CHECK=skip=${GHA_CICD_DOCKERFILE_LINT_SKIP_CHECKS}" "$GHA_CICD_DOCKER_CONTEXT" > docker_lint_output.txt 2>&1
 
 
     #  uses: docker/build-push-action@v6
