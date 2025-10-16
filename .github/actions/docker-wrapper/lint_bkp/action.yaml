@@ -1,0 +1,51 @@
+name: "Dockerfile Lint (Hadolint)"
+description: "Lints a single Dockerfile using Hadolint and environment variables. Supports custom config, provides grouped and annotated output, and uploads a lint report as an artifact for GitHub Actions visibility."
+
+runs:
+  using: "composite"
+  steps:
+    - name: Hadolint Linting
+      shell: bash
+      run: |
+        echo "::group:: Hadolint Linting Start"
+
+        DOCKERFILE="${GHA_CICD_DOCKERFILE_PATH}"
+        HADOLINT_IMAGE="${GHA_CICD_HADOLINT_IMAGE}"
+        HADOLINT_CONFIG="${GHA_CICD_HADOLINT_CONFIG}"
+
+        echo "Linting Dockerfile: $DOCKERFILE"
+        if [ -n "$HADOLINT_CONFIG" ]; then
+          echo "Hadolint config: $HADOLINT_CONFIG"
+        else
+          echo "No Hadolint config file provided. Using default rules."
+        fi
+
+        echo "::group:: Hadolint Version"
+        if ! docker run --rm "$HADOLINT_IMAGE" hadolint --version | tee hadolint-report.txt; then
+          echo "::error::? Failed to get Hadolint version"
+          exit 1
+        fi
+        echo "::endgroup::"
+
+        echo "::group:: Linting Output"
+        if [ -n "$HADOLINT_CONFIG" ] && [ -f "$HADOLINT_CONFIG" ]; then
+          if ! docker run --rm -v "$GITHUB_WORKSPACE:/mnt" "$HADOLINT_IMAGE" hadolint --config "/mnt/$HADOLINT_CONFIG" "/mnt/$DOCKERFILE" | tee -a hadolint-report.txt; then
+            echo "::error::? Hadolint found errors in $DOCKERFILE with config $HADOLINT_CONFIG"
+            exit 1
+          fi
+        else
+          if ! docker run --rm -v "$GITHUB_WORKSPACE:/mnt" "$HADOLINT_IMAGE" hadolint "/mnt/$DOCKERFILE" | tee -a hadolint-report.txt; then
+            echo "::error::? Hadolint found errors in $DOCKERFILE"
+            exit 1
+          fi
+        fi
+        echo "::endgroup::"
+
+        echo "::endgroup:: Hadolint Linting End"
+
+    - name: Upload Hadolint Report
+      uses: actions/upload-artifact@v4
+      if: ${{ !cancelled() }}
+      with:
+        name: hadolint-report
+        path: hadolint-report.txt

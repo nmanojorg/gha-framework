@@ -1,51 +1,27 @@
-name: "Dockerfile Lint (Hadolint)"
-description: "Lints a single Dockerfile using Hadolint and environment variables. Supports custom config, provides grouped and annotated output, and uploads a lint report as an artifact for GitHub Actions visibility."
+name: "Docker Local Build & Tar Export"
+description: "Builds Docker image for default runner arch, supports build args from env/file, and exports as tar."
 
 runs:
   using: "composite"
   steps:
-    - name: Hadolint Linting
+
+    - name: Prepare Build Args
+      id: prep_build_args
       shell: bash
       run: |
-        echo "::group:: Hadolint Linting Start"
+        BUILD_ARGS=$(python3 "./cicd-shared-lib/.github/actions/docker-wrapper/utils/prepare_build_args.py")
+        # Convert space-separated to newline-separated for docker/build-push-action
+        BUILD_ARGS_LIST=$(echo "$BUILD_ARGS" | tr ' ' '\n')
+        echo "build-args<<EOF" >> $GITHUB_OUTPUT
+        echo "$BUILD_ARGS_LIST" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
 
-        DOCKERFILE="${GHA_CICD_DOCKERFILE_PATH}"
-        HADOLINT_IMAGE="${GHA_CICD_HADOLINT_IMAGE}"
-        HADOLINT_CONFIG="${GHA_CICD_HADOLINT_CONFIG}"
-
-        echo "Linting Dockerfile: $DOCKERFILE"
-        if [ -n "$HADOLINT_CONFIG" ]; then
-          echo "Hadolint config: $HADOLINT_CONFIG"
-        else
-          echo "No Hadolint config file provided. Using default rules."
-        fi
-
-        echo "::group:: Hadolint Version"
-        if ! docker run --rm "$HADOLINT_IMAGE" hadolint --version | tee hadolint-report.txt; then
-          echo "::error::? Failed to get Hadolint version"
-          exit 1
-        fi
-        echo "::endgroup::"
-
-        echo "::group:: Linting Output"
-        if [ -n "$HADOLINT_CONFIG" ] && [ -f "$HADOLINT_CONFIG" ]; then
-          if ! docker run --rm -v "$GITHUB_WORKSPACE:/mnt" "$HADOLINT_IMAGE" hadolint --config "/mnt/$HADOLINT_CONFIG" "/mnt/$DOCKERFILE" | tee -a hadolint-report.txt; then
-            echo "::error::? Hadolint found errors in $DOCKERFILE with config $HADOLINT_CONFIG"
-            exit 1
-          fi
-        else
-          if ! docker run --rm -v "$GITHUB_WORKSPACE:/mnt" "$HADOLINT_IMAGE" hadolint "/mnt/$DOCKERFILE" | tee -a hadolint-report.txt; then
-            echo "::error::? Hadolint found errors in $DOCKERFILE"
-            exit 1
-          fi
-        fi
-        echo "::endgroup::"
-
-        echo "::endgroup:: Hadolint Linting End"
-
-    - name: Upload Hadolint Report
-      uses: actions/upload-artifact@v4
-      if: ${{ !cancelled() }}
+    - name: Build Docker Image and Export Tar
+      uses: docker/build-push-action@v5
       with:
-        name: hadolint-report
-        path: hadolint-report.txt
+        context: ${{ env.GHA_CICD_DOCKER_CONTEXT }}
+        file: ${{ env.GHA_CICD_DOCKERFILE_PATH }}
+        tags: ${{ env.GHA_CICD_LOCAL_IMAGE_NAME }}
+        build-args: ${{ steps.prep_build_args.outputs.build-args }}
+        call: check
+        push: false
