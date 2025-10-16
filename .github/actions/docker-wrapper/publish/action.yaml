@@ -1,37 +1,40 @@
-name: "Publish Multi-Arch Docker Images"
-description: "Pushes multi-arch Docker images to registry using docker/build-push-action. Accepts comma-separated image URLs as tags and platforms. Build args are formed in a separate step and passed as a list."
+name: "Publish Docker Image"
+description: "Pushes Docker image to a registry using docker/build-push-action. Supports build args from env variable and file, and uses tar for build cache if needed. No multi-arch, no QEMU."
 
 runs:
   using: "composite"
   steps:
-    - name: Set up QEMU (for cross-arch builds)
-      uses: docker/setup-qemu-action@v3
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+    - name: Setup .docker/config.json
+      shell: bash
+      run: |
+        echo "::group::Setting up Docker config"
+        mkdir -p "$HOME/.docker"
+        echo "$GHA_CICD_DOCKER_CONFIG_JSON" > "$HOME/.docker/config.json"
+        echo "Wrote Docker config to $HOME/.docker/config.json"
+        echo "::endgroup::"
 
-    - name: Prepare build args list
+    - name: Prepare Build Args List
       id: prep_build_args
       shell: bash
       run: |
-        python3 "$GITHUB_ACTION_PATH/prepare_build_args.py" > build_args_list.txt
-        echo "build_args<<EOF" >> $GITHUB_OUTPUT
-        cat build_args_list.txt >> $GITHUB_OUTPUT
+        BUILD_ARGS=$(python3 "./cicd-shared-lib/.github/actions/docker-wrapper/utils/prepare_build_args.py")
+        BUILD_ARGS_LIST=$(echo "$BUILD_ARGS" | tr ' ' '\n')
+        echo "build-args<<EOF" >> $GITHUB_OUTPUT
+        echo "$BUILD_ARGS_LIST" >> $GITHUB_OUTPUT
         echo "EOF" >> $GITHUB_OUTPUT
 
-    - name: Push Multi-Arch Image(s) to Registry (single step, all tags)
+    - name: Push Docker Image to Registry
       uses: docker/build-push-action@v5
       with:
         context: ${{ env.GHA_CICD_DOCKER_CONTEXT }}
-        file: ${{ env.GHA_CICD_DOCKERFILE_PATH}}
-        platforms: ${{ env.GHA_CICD_DOCKER_PLATFORMS}}
+        file: ${{ env.GHA_CICD_DOCKERFILE_PATH }}
         tags: ${{ env.GHA_CICD_DOCKER_IMAGE_URLS }}
-        build-args: ${{ steps.prep_build_args.outputs.build_args }}
+        build-args: ${{ steps.prep_build_args.outputs.build-args }}
         push: true
-        cache-from: type=local,src=./.buildx-cache
-        cache-to: type=local,dest=./.buildx-cache,mode=max
 
     - name: Logout from Docker (cleanup)
       shell: bash
       run: |
-        docker logout || true
+        if ! docker logout; then
+          echo "::warning::?? Docker logout failed or not needed"
