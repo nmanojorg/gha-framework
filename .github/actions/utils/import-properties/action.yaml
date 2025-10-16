@@ -27,12 +27,19 @@ runs:
           fi
 
           while IFS='=' read -r key val || [[ -n "$key" ]]; do
-            # Skip comments and blank lines
-            [[ "$key" =~ ^[[:space:]]*[#!] || -z "$key" ]] && continue
-            key=$(echo "$key" | xargs)
-            val=$(echo "$val" | sed 's/\r$//' | xargs)
+            # Remove carriage return (Windows line endings)
+            key=$(echo "$key" | sed 's/\r$//')
+            val=$(echo "$val" | sed 's/\r$//')
 
-            # Always override existing environment variable
+            # Trim whitespace
+            key=$(echo "$key" | xargs)
+            val=$(echo "$val" | xargs)
+
+            # Skip blank lines, comment lines, and lines with empty key
+            if [[ -z "$key" || "$key" =~ ^[#!] ]]; then
+              continue
+            fi
+
             echo "${key}=${val}" >> "$GITHUB_ENV"
             echo "::notice::Imported $key"
           done < "$file"
@@ -44,6 +51,5 @@ runs:
           echo "::error::One or more properties files were missing: ${error_files[*]}"
           exit 1
         fi
-
 
         echo "::notice::END IMPORTING PROPERTIES"
