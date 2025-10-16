@@ -1,74 +1,34 @@
-name: "Docker Build (Multi-Arch, Per-Arch Load)"
-description: "Builds Docker images for multiple platforms and image URLs using a single Dockerfile and env vars only, with per-arch local load for testing. Automatically sets up QEMU for cross-architecture builds."
+name: "Docker Local Build & Tar Export"
+description: "Builds Docker image for default runner arch, supports build args from env/file, and exports as tar."
 
 runs:
   using: "composite"
   steps:
-    - name: Set up QEMU (for cross-arch builds)
-      uses: docker/setup-qemu-action@v3
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-
-    - name: Build and Load Images Per Platform (single Dockerfile, no push, only first image per platform)
+    - name: Prepare Build Args
+      id: prep_build_args
       shell: bash
       run: |
-        set -e
+        BUILD_ARGS=$(python3 "./cicd-shared-lib/.github/actions/docker-wrapper/utils/prepare_build_args.py")
+        # Convert space-separated to newline-separated for docker/build-push-action
+        BUILD_ARGS_LIST=$(echo "$BUILD_ARGS" | tr ' ' '\n')
+        echo "build-args<<EOF" >> $GITHUB_OUTPUT
+        echo "$BUILD_ARGS_LIST" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
 
-        IMAGE_URLS="${GHA_CICD_DOCKER_IMAGE_URLS}"
-        DOCKER_CONTEXT="${GHA_CICD_DOCKER_CONTEXT}"
-        DOCKERFILE_PATH="${GHA_CICD_DOCKERFILE_PATH}"
-        PLATFORMS="${GHA_CICD_DOCKER_PLATFORMS}"
+    - name: Build Docker Image and Export Tar
+      uses: docker/build-push-action@v5
+      with:
+        context: ${{ env.GHA_CICD_DOCKER_CONTEXT }}
+        file: ${{ env.GHA_CICD_DOCKERFILE_PATH }}
+        tags: ${{ env.GHA_CICD_DOCKER_IMAGE_URLS }}
+        build-args: ${{ steps.prep_build_args.outputs.build-args }}
+        outputs: type=tar,dest=docker-image.tar
+        push: false
+        load: true
 
-        BUILD_ARG_OPTIONS=$(python3 "$GITHUB_ACTION_PATH/prepare_build_args.py" | tail -n 1)
-
-        IFS=',' read -ra image_url_list <<< "$IMAGE_URLS"
-        IFS=',' read -ra platform_list <<< "$PLATFORMS"
-
-        # Use only the first image URL for local load/testing
-        first_image_url="${image_url_list[0]}"
-
-        for platform in "${platform_list[@]}"; do
-          platform="$(echo "$platform" | xargs)"
-          platform_key="${platform//\//_}"
-          image_tag="${first_image_url}-${platform_key}"
-          tar_file="${image_tag//[:\/]/_}.tar"
-          echo "::group::Building and loading $image_tag for $platform with $DOCKERFILE_PATH"
-          docker buildx build \
-            --platform "$platform" \
-            --file "$DOCKERFILE_PATH" \
-            $BUILD_ARG_OPTIONS \
-            -t "$image_tag" \
-            --output type=tar,dest="$tar_file" \
-            --cache-to=type=local,dest=./.buildx-cache \
-            --cache-from=type=local,src=./.buildx-cache \
-            --push=false \
-            --load \
-            "$DOCKER_CONTEXT"
-          echo "Built and loaded $image_tag for $platform"
-          echo "::endgroup::"
-        done
-
-    - name: Simple Debug - Image Architecture
+    - name: Debug Image Architecture
       shell: bash
       run: |
-        echo "::group::Simple Debug - Image Architecture"
-        IMAGE_URLS="${GHA_CICD_DOCKER_IMAGE_URLS}"
-        PLATFORMS="${GHA_CICD_DOCKER_PLATFORMS}"
-
-        IFS=',' read -ra image_url_list <<< "$IMAGE_URLS"
-        IFS=',' read -ra platform_list <<< "$PLATFORMS"
-
-        # Use only the first image URL for debug output
-        first_image_url="${image_url_list[0]}"
-
-        for platform in "${platform_list[@]}"; do
-          platform_key="${platform//\//_}"
-          image_tag="${first_image_url}-${platform_key}"
-          echo "Image: $image_tag (platform: $platform)"
-          docker image inspect "$image_tag" --format='Architecture: {{.Architecture}}, OS: {{.Os}}' || echo "Image not found: $image_tag"
-        done
-
+        docker images
         ls -ltr | grep tar
-
-        echo "::endgroup::"

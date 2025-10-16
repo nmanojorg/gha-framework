@@ -1,70 +1,27 @@
-name: "Test (Docker image, dgoss)"
-description: "Runs dgoss tests on locally built and loaded images for each platform. Uses only the first built/tagged image per platform for testing. Supports single or multiple platforms, per-arch goss files, and saves test reports as artifacts. All configuration via GHA_CICD_ env vars. Adds --entrypoint tail and passes --platform if set."
+name: "Docker Image Test (dgoss)"
+description: "Runs dgoss tests on a locally built Docker image using a single test file variable. No multi-arch/QEMU logic."
 
 runs:
   using: "composite"
   steps:
-    - name: Set up QEMU (for cross-arch testing)
-      uses: docker/setup-qemu-action@v3
-
     - name: Install dgoss/goss
       shell: bash
       run: |
-        curl -Ls https://github.com/aelsabbahy/goss/releases/latest/download/goss-linux-amd64 > /usr/local/bin/goss
-        chmod +x /usr/local/bin/goss
-        curl -Ls https://github.com/aelsabbahy/goss/releases/latest/download/dgoss > /usr/local/bin/dgoss
-        chmod +x /usr/local/bin/dgoss
+        mkdir -p "$HOME/bin"
+        curl -fsSL "$GHA_CICD_GOSS_URL" -o "$HOME/bin/goss"
+        curl -fsSL "$GHA_CICD_DGOSS_URL" -o "$HOME/bin/dgoss"
+        chmod +x "$HOME/bin/goss" "$HOME/bin/dgoss"
+        echo "$HOME/bin" >> $GITHUB_PATH
 
-    - name: Run dgoss tests (multi-arch, entrypoint override, platform if set)
+    - name: Run dgoss Tests
       shell: bash
       run: |
-        set -e
-        echo "::group::?? dgoss Test Start"
-        IMAGE_URLS="${GHA_CICD_DOCKER_IMAGE_URLS}"
-        PLATFORMS="${GHA_CICD_DOCKER_PLATFORMS}"
-
-        IFS=',' read -ra image_url_list <<< "$IMAGE_URLS"
-
-        echo "::group::goss Version"
-        goss --version | tee dgoss-report.txt
-        echo "::endgroup::"
-
-        if [ -z "$PLATFORMS" ]; then
-          DGOSS_TEST_FILE="${GHA_CICD_DGOSS_TEST_FILE:-goss.yaml}"
-          if [ ! -f "$DGOSS_TEST_FILE" ]; then
-            echo "? dgoss test file not found: $DGOSS_TEST_FILE"
-            exit 1
-          fi
-
-          # Use only the first image for testing
-          first_image_url="${image_url_list[0]}"
-          echo "Testing image: $first_image_url with test file: $DGOSS_TEST_FILE"
-          export GOSS_FILE="$DGOSS_TEST_FILE"
-          dgoss run --entrypoint tail "$first_image_url" -f /dev/null | tee -a dgoss-report.txt
-
-        else
-          IFS=',' read -ra platform_list <<< "$PLATFORMS"
-          # Use only the first image for each platform
-          first_image_url="${image_url_list[0]}"
-          for platform in "${platform_list[@]}"; do
-            platform="$(echo "$platform" | xargs)"
-            platform_key="${platform//\//_}"
-            image_tag="${first_image_url}-${platform_key}"
-            DGOSS_TEST_FILE_VAR="GHA_CICD_DGOSS_TEST_FILE_${platform_key}"
-            DGOSS_TEST_FILE="${!DGOSS_TEST_FILE_VAR:-$GHA_CICD_DGOSS_TEST_FILE:-goss.yaml}"
-
-            if [ ! -f "$DGOSS_TEST_FILE" ]; then
-              echo "? dgoss test file not found for $platform: $DGOSS_TEST_FILE"
-              continue
-            fi
-
-            echo "Testing image: $image_tag with test file: $DGOSS_TEST_FILE on platform: $platform"
-            export GOSS_FILE="$DGOSS_TEST_FILE"
-            dgoss run --entrypoint tail --platform "$platform" "$image_tag" -f /dev/null | tee -a dgoss-report.txt
-          done
+        if [ ! -f "$GHA_CICD_DGOSS_TEST_FILE" ]; then
+          echo "::error::? dgoss test file not found: $GHA_CICD_DGOSS_TEST_FILE"
+          exit 1
         fi
-
-        echo "::endgroup::?? dgoss Test End"
+        export GOSS_FILE="$GHA_CICD_DGOSS_TEST_FILE"
+        dgoss run --entrypoint tail ${{ env.GHA_CICD_DOCKER_IMAGE_URLS }} -f /dev/null | tee dgoss-report.txt
 
     - name: Upload dgoss Test Report
       uses: actions/upload-artifact@v4
