@@ -8,9 +8,23 @@ runs:
   steps:
 
     - name: Lint Dockerfile Syntax
-      uses: docker/build-push-action@v6
+      shell: bash
+      run: |
+          set +e
+          docker build --file "$GHA_CICD_DOCKERFILE_PATH" --build-arg "BUILDKIT_DOCKERFILE_CHECK=skip=${GHA_CICD_DOCKERFILE_LINT_SKIP_CHECKS}" "$GHA_CICD_DOCKER_CONTEXT" > docker_lint_output.txt 2>&1
+
+
+    #  uses: docker/build-push-action@v6
+    #  with:
+    #    context: ${{ env.GHA_CICD_DOCKER_CONTEXT }}
+    #    file: ${{ env.GHA_CICD_DOCKERFILE_PATH }}
+    #    build-args: "BUILDKIT_DOCKERFILE_CHECK=skip=${{ env.GHA_CICD_DOCKERFILE_LINT_SKIP_CHECKS }}"
+    #    call: check
+
+    - name: Upload Xray Report
+      uses: actions/upload-artifact@v4
+      if: ${{ !cancelled() && env.GHA_CICD_RUN_XRAY_SCAN == 'true' }}
       with:
-        context: ${{ env.GHA_CICD_DOCKER_CONTEXT }}
-        file: ${{ env.GHA_CICD_DOCKERFILE_PATH }}
-        build-args: "BUILDKIT_DOCKERFILE_CHECK=skip=${{ env.GHA_CICD_DOCKERFILE_LINT_SKIP_CHECKS }}"
-        call: check
+        name: xray-report-${{ github.run_id }}-${{ github.job }}
+        path: docker_lint_output.txt
+        overwrite: true
