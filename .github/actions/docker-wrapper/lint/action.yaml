@@ -1,15 +1,16 @@
-name: "Dockerfile Lint"
-description: "Validates Dockerfile syntax using docker/build-push-action@v6. Fails if the Dockerfile or context is invalid."
 
 # BUILDKIT_DOCKERFILE_CHECK=skip=ConsistentInstructionCasing ,StageNameCasing
+
+name: "Dockerfile Lint"
+description: "Validates Dockerfile syntax using docker/build-push-action@v6. The action fails if the Dockerfile or build context is invalid. You can skip specific lint checks by setting the GHA_CICD_DOCKERFILE_LINT_SKIP_CHECKS environment variable with a comma-separated list of rule names."
 runs:
   using: "composite"
   steps:
 
-    - name: Build Docker Image and Export Tar
+    - name: Lint Dockerfile Syntax
       uses: docker/build-push-action@v6
       with:
         context: ${{ env.GHA_CICD_DOCKER_CONTEXT }}
         file: ${{ env.GHA_CICD_DOCKERFILE_PATH }}
-        build-args: "BUILDKIT_DOCKERFILE_CHECK=skip="
+        build-args: "BUILDKIT_DOCKERFILE_CHECK=skip=${{ env.GHA_CICD_DOCKERFILE_LINT_SKIP_CHECKS }}"
         call: check
