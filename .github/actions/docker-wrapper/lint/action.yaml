@@ -1,15 +1,15 @@
-name: "Docker Local Build & Tar Export"
-description: "Builds Docker image for default runner arch, supports build args from env/file, and exports as tar."
+name: "Dockerfile Lint"
+description: "Validates Dockerfile syntax using docker/build-push-action@v6. Fails if the Dockerfile or context is invalid."
 
+# BUILDKIT_DOCKERFILE_CHECK=skip=ConsistentInstructionCasing ,StageNameCasing
 runs:
   using: "composite"
   steps:
-
 
     - name: Build Docker Image and Export Tar
       uses: docker/build-push-action@v6
       with:
         context: ${{ env.GHA_CICD_DOCKER_CONTEXT }}
         file: ${{ env.GHA_CICD_DOCKERFILE_PATH }}
-        build-args: "BUILDKIT_DOCKERFILE_CHECK=skip=ConsistentInstructionCasing ,StageNameCasing;error=false"
+        build-args: "BUILDKIT_DOCKERFILE_CHECK=skip="
         call: check
