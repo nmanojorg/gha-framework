@@ -17,7 +17,7 @@ runs:
         echo "EOF" >> $GITHUB_OUTPUT
 
     - name: Build Docker Image and Export Tar
-      uses: docker/build-push-action@v5
+      uses: docker/build-push-action@v6
       with:
         context: ${{ env.GHA_CICD_DOCKER_CONTEXT }}
         file: ${{ env.GHA_CICD_DOCKERFILE_PATH }}
