@@ -8,8 +8,8 @@ runs:
       shell: bash
       run: |
         mkdir -p "$HOME/bin"
-        curl -fsSL "$GHA_CICD_GOSS_URL" -o "$HOME/bin/goss"
-        curl -fsSL "$GHA_CICD_DGOSS_URL" -o "$HOME/bin/dgoss"
+        curl -fsSL https://github.com/aelsabbahy/goss/releases/latest/download/goss-linux-amd64 -o "$HOME/bin/goss"
+        curl -fsSL https://github.com/aelsabbahy/goss/releases/latest/download/dgoss -o "$HOME/bin/dgoss"
         chmod +x "$HOME/bin/goss" "$HOME/bin/dgoss"
         echo "$HOME/bin" >> $GITHUB_PATH
 
