@@ -32,9 +32,3 @@ runs:
         tags: ${{ env.GHA_CICD_DOCKER_IMAGE_URLS }}
         build-args: ${{ steps.prep_build_args.outputs.build-args }}
         push: true
-
-    - name: Logout from Docker (cleanup)
-      shell: bash
-      run: |
-        if ! docker logout; then
-          echo "::warning::?? Docker logout failed or not needed"
