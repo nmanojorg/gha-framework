@@ -6,7 +6,7 @@ description: |
 runs:
   using: "composite"
   steps:
-    - name: Group: Lint Dockerfile (BuildKit Syntax Check)
+    - name: Lint Dockerfile (BuildKit Syntax Check)
       shell: bash
       run: |
         echo "::group::Dockerfile Linting"
