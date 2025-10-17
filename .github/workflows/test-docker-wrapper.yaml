@@ -153,10 +153,14 @@ jobs:
       # --- TC04: Publish only, image exists ---
       - name: "TC04-GIVEN: Pre-existing image is tagged and available"
         run: |
+          mkdir -p tc04
+          echo "FROM alpine:3.18" > tc04/Dockerfile
           docker pull alpine:3.18
           docker tag alpine:3.18 localhost:5000/test-image:tc04
-          echo "GHA_CICD_DOCKER_IMAGE_URLS=localhost:5000/test-image:tc04," > tc04.properties
-          echo "GHA_CICD_DOCKER_CONFIG_JSON=${{ secrets.DOCKER_CONFIG_JSON }}" >> tc04.properties
+          echo "GHA_CICD_DOCKERFILE_PATH=tc04/Dockerfile" > tc04/docker.properties
+          echo "GHA_CICD_DOCKER_CONTEXT=tc04" >> tc04/docker.properties
+          echo "GHA_CICD_DOCKER_CONFIG_JSON=${{ secrets.DOCKER_CONFIG_JSON }}" >> tc04/docker.properties
+          echo "GHA_CICD_DOCKER_IMAGE_URLS=localhost:5000/test-image:tc04," >> tc04/docker.properties
 
       - name: "TC04-WHEN: docker-wrapper is run with only publish enabled"
         id: tc04_publish_only
@@ -167,7 +171,7 @@ jobs:
           run_test: "false"
           run_scan: "false"
           run_publish: "true"
-          properties_path: "tc04.properties"
+          properties_path: "tc04/docker.properties"
 
       - name: "TC04-THEN: publish_status should be 'success', others skipped"
         env:
@@ -224,8 +228,10 @@ jobs:
           fi
 
       # --- TC06: Properties file missing ---
-      - name: "TC06-GIVEN: Missing properties file"
-        run: echo "No properties file will be created for TC06"
+      - name: "TC06-GIVEN: Missing properties file but Dockerfile exists"
+        run: |
+          mkdir -p tc06
+          echo "FROM alpine:3.18" > tc06/Dockerfile
 
       - name: "TC06-WHEN: docker-wrapper is run with missing properties file"
         id: tc06_missing_properties
@@ -357,4 +363,4 @@ jobs:
             fi
           done
 
-      # --- Add more test cases as needed (scan, registry unreachable, etc.) ---
+      # --- Add more test cases as needed ---
