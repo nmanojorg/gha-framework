@@ -39,7 +39,7 @@ jobs:
           echo "GHA_CICD_DOCKER_CONTEXT=." >> tc01/docker.properties
           echo "GHA_CICD_DOCKER_CONFIG_JSON=${{ secrets.DOCKER_CONFIG_JSON }}" >> tc01/docker.properties
           echo "GHA_CICD_DGOSS_TEST_FILE=tc01/goss.yaml" >> tc01/docker.properties
-          echo "GHA_CICD_LOCAL_DOCKER_IMAGE_NAME=localhost:5000/test-image:tc01" >> tc01/docker.properties
+          echo "GHA_CICD_DOCKER_IMAGE_URLS=localhost:5000/test-image:tc01" >> tc01/docker.properties
           
 
       - name: "TC01-WHEN: docker-wrapper is run with all steps enabled"
