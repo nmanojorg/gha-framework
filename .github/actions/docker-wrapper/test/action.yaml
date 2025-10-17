@@ -50,6 +50,7 @@ runs:
       with:
         name: dgoss-report
         path: dgoss-report.txt
+        overwrite: true
 
     - name: Post Step (Docker Image Test)
       if: ${{ !cancelled() }}
