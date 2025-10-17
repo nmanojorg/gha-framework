@@ -27,8 +27,7 @@ jobs:
         with:
           path: shared-library
 
-      ########################################################################
-      # TC01: All steps enabled, valid inputs
+      # --- TC01: All steps enabled, valid inputs ---
       - name: "TC01-GIVEN: Valid Dockerfile, context and all required files"
         run: |
           mkdir -p tc01
@@ -47,7 +46,7 @@ jobs:
           run_lint: "true"
           run_build: "true"
           run_test: "true"
-          run_scan: "false"   # scan needs more setup/cert/secrets, skip in example
+          run_scan: "false"
           run_publish: "true"
           properties_path: "tc01/docker.properties"
 
@@ -69,8 +68,7 @@ jobs:
           done
           exit $FAIL
 
-      ########################################################################
-      # TC02: Lint step fails (invalid Dockerfile)
+      # --- TC02: Lint step fails (invalid Dockerfile) ---
       - name: "TC02-GIVEN: Invalid Dockerfile (syntax error)"
         run: |
           mkdir -p tc02
@@ -102,8 +100,7 @@ jobs:
             exit 1
           fi
 
-      ########################################################################
-      # TC03: Test step fails (missing test file)
+      # --- TC03: Test step fails (missing test file) ---
       - name: "TC03-GIVEN: Valid Dockerfile, missing dgoss test file"
         run: |
           mkdir -p tc03
@@ -137,9 +134,8 @@ jobs:
             exit 1
           fi
 
-      ########################################################################
-      # TC04: Build disabled, publish enabled (should not publish)
-      - name: "TC04-GIVEN: Valid Dockerfile, publish enabled, build disabled"
+      # --- TC04: Build disabled, publish enabled (should not publish) ---
+      - name: "TC04-GIVEN: Invalid Dockerfile, publish enabled, build disabled"
         run: |
           mkdir -p tc04
           echo "FROM alpine:invalid" > tc04/Dockerfile
@@ -170,8 +166,7 @@ jobs:
             exit 1
           fi
 
-      ########################################################################
-      # TC05: All steps disabled
+      # --- TC05: All steps disabled ---
       - name: "TC05-GIVEN: Valid Dockerfile, all steps disabled"
         run: |
           mkdir -p tc05
@@ -192,7 +187,7 @@ jobs:
           run_publish: "false"
           properties_path: "tc05/docker.properties"
 
-      - name: "TC05-THEN: all outputs should be empty"
+      - name: "TC05-THEN: all outputs should be 'skipped'"
         env:
           lint_status: ${{ steps.docker_wrapper_tc05.outputs.lint_status }}
           build_status: ${{ steps.docker_wrapper_tc05.outputs.build_status }}
@@ -200,6 +195,7 @@ jobs:
           scan_status: ${{ steps.docker_wrapper_tc05.outputs.scan_status }}
           publish_status: ${{ steps.docker_wrapper_tc05.outputs.publish_status }}
         run: |
+          FAIL=0
           for step in lint_status build_status test_status scan_status publish_status; do
             val="${!step}"
             echo "$step=$val"
@@ -208,7 +204,6 @@ jobs:
               FAIL=1
             fi
           done
+          exit $FAIL
 
-      ########################################################################
-
-      # Add more test cases here (e.g., scan, registry unreachable, etc.)
+      # --- Add more test cases here (e.g., scan, registry unreachable, etc.) ---
