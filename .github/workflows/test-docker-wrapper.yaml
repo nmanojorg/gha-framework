@@ -142,7 +142,7 @@ jobs:
       - name: "TC04-GIVEN: Valid Dockerfile, publish enabled, build disabled"
         run: |
           mkdir -p tc04
-          echo "FROM alpine:3.18" > tc04/Dockerfile
+          echo "FROM alpine:invalid" > tc04/Dockerfile
           echo "GHA_CICD_DOCKERFILE_PATH=tc04/Dockerfile" > tc04/docker.properties
           echo "GHA_CICD_DOCKER_CONTEXT=." >> tc04/docker.properties
           echo "GHA_CICD_DOCKER_CONFIG_JSON=${{ secrets.DOCKER_CONFIG_JSON }}" >> tc04/docker.properties
