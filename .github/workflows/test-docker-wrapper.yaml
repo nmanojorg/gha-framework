@@ -89,7 +89,7 @@ jobs:
           run_publish: "false"
           properties_path: "tc02/docker.properties"
 
-      - name: "TC02-THEN: lint_status output should be 'failure'"
+      - name: "TC02-THEN: lint_status output should be 'failure', others skipped"
         env:
           lint_status: ${{ steps.tc02_lint_fail.outputs.lint_status }}
           build_status: ${{ steps.tc02_lint_fail.outputs.build_status }}
@@ -131,7 +131,7 @@ jobs:
           run_publish: "false"
           properties_path: "tc03/docker.properties"
 
-      - name: "TC03-THEN: test_status should be 'failure', others correct"
+      - name: "TC03-THEN: test_status should be 'failure', build_status success, publish_status skipped"
         env:
           build_status: ${{ steps.tc03_test_fail_assert.outputs.build_status }}
           test_status: ${{ steps.tc03_test_fail_assert.outputs.test_status }}
@@ -151,7 +151,7 @@ jobs:
           fi
 
       # --- TC04: Publish only, image exists ---
-      - name: "TC04-GIVEN: Pre-existing image is tagged and available"
+      - name: "TC04-GIVEN: Pre-existing image is tagged and available, Dockerfile present"
         run: |
           mkdir -p tc04
           echo "FROM alpine:3.18" > tc04/Dockerfile
@@ -227,8 +227,8 @@ jobs:
             exit 1
           fi
 
-      # --- TC06: Properties file missing ---
-      - name: "TC06-GIVEN: Missing properties file but Dockerfile exists"
+      # --- TC06: Properties file missing but Dockerfile exists ---
+      - name: "TC06-GIVEN: Dockerfile exists but no properties file"
         run: |
           mkdir -p tc06
           echo "FROM alpine:3.18" > tc06/Dockerfile
@@ -245,17 +245,24 @@ jobs:
           run_publish: "false"
           properties_path: "tc06/missing.properties"
 
-      - name: "TC06-THEN: lint_status should be 'failure'"
+      - name: "TC06-THEN: all outputs should be 'skipped'"
         env:
           lint_status: ${{ steps.tc06_missing_properties.outputs.lint_status }}
+          build_status: ${{ steps.tc06_missing_properties.outputs.build_status }}
+          test_status: ${{ steps.tc06_missing_properties.outputs.test_status }}
+          scan_status: ${{ steps.tc06_missing_properties.outputs.scan_status }}
+          publish_status: ${{ steps.tc06_missing_properties.outputs.publish_status }}
         run: |
-          echo "lint_status=$lint_status"
-          if [ "$lint_status" != "failure" ]; then
-            echo "Lint should fail due to missing properties"
-            exit 1
-          fi
+          for step in lint_status build_status test_status scan_status publish_status; do
+            val="${!step}"
+            echo "$step=$val"
+            if [ "$val" != "skipped" ]; then
+              echo "$step should be 'skipped' when properties file is missing, got: $val"
+              exit 1
+            fi
+          done
 
-      # --- TC07: Secret missing ---
+      # --- TC07: Secret missing but Dockerfile/properties exist ---
       - name: "TC07-GIVEN: Valid Dockerfile, missing docker config secret"
         run: |
           mkdir -p tc07
