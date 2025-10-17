@@ -27,6 +27,23 @@ inputs:
     required: false
     default: ""
 
+outputs:
+  lint_status:
+    description: "Result of lint step"
+    value: ${{ steps.lint.outcome }}
+  build_status:
+    description: "Result of build step"
+    value: ${{ steps.build.outcome }}
+  test_status:
+    description: "Result of test step"
+    value: ${{ steps.test.outcome }}
+  scan_status:
+    description: "Result of scan step"
+    value: ${{ steps.scan.outcome }}
+  publish_status:
+    description: "Result of publish step"
+    value: ${{ steps.publish.outcome }}
+
 runs:
   using: "composite"
   steps:
@@ -44,7 +61,7 @@ runs:
       with:
         repository: "${{ env.action_repository }}"
         ref: "${{ env.action_ref }}"
-        #token: "${{ env.GHA_SHAREDLIB_FG_TOKEN }}"
+        token: "${{ env.GHA_SHAREDLIB_FG_TOKEN }}"
         path: 'cicd-shared-lib'
       env:
         action_ref: "${{ github.action_ref }}"
@@ -80,28 +97,12 @@ runs:
           run_test: "${{ inputs.run_test }}"
           run_scan: "${{ inputs.run_scan }}"
           run_publish: "${{ inputs.run_publish }}"
-          GHA_CICD_DOCKERFILE_PATH: "${{ env.GHA_CICD_DOCKERFILE_PATH }}"
-          GHA_CICD_DOCKER_CONTEXT: "${{ env.GHA_CICD_DOCKER_CONTEXT }}"
-          GHA_CICD_DOCKER_BUILD_ARGS: "${{ env.GHA_CICD_DOCKER_BUILD_ARGS }}"
-          GHA_CICD_DOCKER_PUSH_URLS: "${{ env.GHA_CICD_DOCKER_PUSH_URLS }}"
-          GHA_CICD_HADOLINT_CONFIG: "${{ env.GHA_CICD_HADOLINT_CONFIG }}"
-          GHA_CICD_DOCKER_CONFIG_JSON: "${{ env.GHA_CICD_DOCKER_CONFIG_JSON != '' }}"
         requiredInputs: |
           - run_lint
           - run_build
           - run_test
           - run_scan
           - run_publish
-          - GHA_CICD_DOCKER_CONTEXT
-          - GHA_CICD_DOCKERFILE_PATH
-        optionalInputs: |
-          - GHA_CICD_DOCKER_BUILD_ARGS
-          - GHA_CICD_DOCKER_PUSH_URLS
-          - GHA_CICD_DOCKER_CONFIG_JSON
-          - GHA_CICD_HADOLINT_CONFIG
-        filesPathInputs: |
-          - GHA_CICD_DOCKERFILE_PATH
-          - GHA_CICD_HADOLINT_CONFIG
         typeValidations: |
           booleanString:
             - run_lint
@@ -109,45 +110,28 @@ runs:
             - run_test
             - run_scan
             - run_publish
-          string:
-            - GHA_CICD_DOCKERFILE_PATH
-            - GHA_CICD_DOCKER_CONTEXT
-            - GHA_CICD_DOCKER_BUILD_ARGS
-            - GHA_CICD_DOCKER_PUSH_URLS
-            - GHA_CICD_DOCKER_CONFIG_JSON
-            - GHA_CICD_HADOLINT_CONFIG
-        dependencyValidations: |
-          run_publish:
-            expectedValue: "true"
-            dependentInputs:
-              - GHA_CICD_DOCKER_PUSH_URLS
-              - GHA_CICD_DOCKER_CONFIG_JSON
 
     - name: Lint (Docker)
+      id: lint
       if: ${{ inputs.run_lint == 'true' }}
       uses: ./cicd-shared-lib/.github/actions/docker-wrapper/lint
 
-    - name: Setup .docker/config.json
-      shell: bash
-      run: |
-        echo "::group::Setting up Docker config"
-        mkdir -p "$HOME/.docker"
-        echo "$GHA_CICD_DOCKER_CONFIG_JSON" > "$HOME/.docker/config.json"
-        echo "Wrote Docker config to $HOME/.docker/config.json"
-        echo "::endgroup::"
-
     - name: Build (Docker)
+      id: build
       if: ${{ inputs.run_build == 'true' }}
       uses: ./cicd-shared-lib/.github/actions/docker-wrapper/build
 
     - name: Test (Docker)
-      if: ${{ inputs.run_test == 'true' }}
+      id: test
+      if: ${{ inputs.run_build == 'true' && inputs.run_test == 'true' }}
       uses: ./cicd-shared-lib/.github/actions/docker-wrapper/test
 
     - name: Scan (Docker)
-      if: ${{ inputs.run_scan == 'true' }}
+      id: scan
+      if: ${{ inputs.run_build == 'true' && inputs.run_scan == 'true' }}
       uses: ./cicd-shared-lib/.github/actions/docker-wrapper/scan
 
     - name: Publish (Docker)
+      id: publish
       if: ${{ inputs.run_publish == 'true' }}
       uses: ./cicd-shared-lib/.github/actions/docker-wrapper/publish

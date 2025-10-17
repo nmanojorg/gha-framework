@@ -3,9 +3,37 @@ description: |
   Validates Dockerfile syntax using Docker BuildKit.
   Fails if the Dockerfile or build context is invalid.
   You can skip specific lint checks by setting the GHA_CICD_DOCKERFILE_LINT_SKIP_CHECKS environment variable.
+
 runs:
   using: "composite"
   steps:
+    - name: Pre Step (Dockerfile Lint)
+      shell: bash
+      run: |
+        echo "[PRE] Placeholder for pre-lint actions."
+
+    - name: Validate Inputs and Environment (Docker Lint)
+      uses: ./cicd-shared-lib/.github/actions/utils/validate-inputs
+      with:
+        actionInputs: |
+          GHA_CICD_DOCKERFILE_PATH: "${{ env.GHA_CICD_DOCKERFILE_PATH }}"
+          GHA_CICD_DOCKER_CONTEXT: "${{ env.GHA_CICD_DOCKER_CONTEXT }}"
+          GHA_CICD_DOCKERFILE_LINT_SKIP_CHECKS: "${{ env.GHA_CICD_DOCKERFILE_LINT_SKIP_CHECKS }}"      
+        requiredInputs: |
+          - GHA_CICD_DOCKER_CONTEXT
+          - GHA_CICD_DOCKERFILE_PATH
+        optionalInputs: |
+          - GHA_CICD_DOCKERFILE_LINT_SKIP_CHECKS
+        filesPathInputs: |
+          - GHA_CICD_DOCKERFILE_PATH
+        typeValidations: |
+          string:
+            - GHA_CICD_DOCKERFILE_PATH
+            - GHA_CICD_DOCKER_CONTEXT
+            - GHA_CICD_DOCKERFILE_LINT_SKIP_CHECKS
+        delimiterValidations: |
+            GHA_CICD_DOCKERFILE_LINT_SKIP_CHECKS: ","
+
     - name: Lint Dockerfile (BuildKit Syntax Check)
       shell: bash
       run: |
@@ -24,3 +52,9 @@ runs:
         name: dockerfile-lint-report-${{ github.run_id }}-${{ github.job }}
         path: docker_lint_output.txt
         overwrite: true
+
+    - name: Post Step (Dockerfile Lint)
+      if: ${{ !cancelled() }}
+      shell: bash
+      run: |
+        echo "[POST] Placeholder for post-lint actions."

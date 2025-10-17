@@ -5,15 +5,39 @@ runs:
   using: "composite"
   steps:
 
+    - name: Validate Inputs and Environment (Docker Build)
+      uses: ./cicd-shared-lib/.github/actions/utils/validate-inputs
+      with:
+        actionInputs: |
+          GHA_CICD_DOCKERFILE_PATH: "${{ env.GHA_CICD_DOCKERFILE_PATH }}"
+          GHA_CICD_DOCKER_CONTEXT: "${{ env.GHA_CICD_DOCKER_CONTEXT }}"
+          GHA_CICD_DOCKER_BUILD_ARGS: "${{ env.GHA_CICD_DOCKER_BUILD_ARGS }}"
+          GHA_CICD_DOCKER_BUILD_ARGS_FILE: "${{ env.GHA_CICD_DOCKER_BUILD_ARGS_FILE }}"
+        requiredInputs: |
+          - GHA_CICD_DOCKER_CONTEXT
+          - GHA_CICD_DOCKERFILE_PATH
+        optionalInputs: |
+          - GHA_CICD_DOCKER_BUILD_ARGS
+          - GHA_CICD_DOCKER_BUILD_ARGS_FILE
+        filesPathInputs: |
+          - GHA_CICD_DOCKERFILE_PATH
+          - GHA_CICD_DOCKER_BUILD_ARGS_FILE
+        typeValidations: |
+          string:
+            - GHA_CICD_DOCKERFILE_PATH
+            - GHA_CICD_DOCKER_CONTEXT
+            - GHA_CICD_DOCKER_BUILD_ARGS
+            - GHA_CICD_DOCKER_BUILD_ARGS_FILE
+        delimiterValidations: |
+            GHA_CICD_DOCKERFILE_LINT_SKIP_CHECKS: " "
+
     - name: Prepare Build Args
       id: prep_build_args
       shell: bash
       run: |
         BUILD_ARGS=$(python3 "./cicd-shared-lib/.github/actions/docker-wrapper/utils/prepare_build_args.py")
-        # Convert space-separated to newline-separated for docker/build-push-action
-        BUILD_ARGS_LIST=$(echo "$BUILD_ARGS" | tr ' ' '\n')
         echo "build-args<<EOF" >> $GITHUB_OUTPUT
-        echo "$BUILD_ARGS_LIST" >> $GITHUB_OUTPUT
+        echo "$BUILD_ARGS" >> $GITHUB_OUTPUT
         echo "EOF" >> $GITHUB_OUTPUT
 
     - name: Build Docker Image and Export Tar
@@ -21,14 +45,8 @@ runs:
       with:
         context: ${{ env.GHA_CICD_DOCKER_CONTEXT }}
         file: ${{ env.GHA_CICD_DOCKERFILE_PATH }}
-        tags: ${{ env.GHA_CICD_LOCAL_IMAGE_NAME }}
+        tags: ${{ env.GHA_CICD_LOCAL_DOCKER_IMAGE_NAME }}
         build-args: ${{ steps.prep_build_args.outputs.build-args }}
-        outputs: type=tar,dest=docker-image.tar
+        outputs: type=tar,dest=${{ env.GHA_CICD_LOCAL_DOCKER_IMAGE_TAR }}
         push: false
         load: true
-
-    - name: Debug Image Architecture
-      shell: bash
-      run: |
-        docker images
-        ls -ltr | grep tar

@@ -4,13 +4,31 @@ description: "Runs dgoss tests on a locally built Docker image using a single te
 runs:
   using: "composite"
   steps:
+    - name: Pre Step (Docker Image Test)
+      shell: bash
+      run: |
+        echo "[PRE] Placeholder for pre-test actions."
+
+    - name: Validate Inputs and Environment (Docker Test)
+      uses: ./cicd-shared-lib/.github/actions/utils/validate-inputs
+      with:
+        actionInputs: |
+          GHA_CICD_DGOSS_TEST_FILE: "${{ env.GHA_CICD_DGOSS_TEST_FILE }}"
+        requiredInputs: |
+          - GHA_CICD_DGOSS_TEST_FILE
+        filesPathInputs: |
+          - GHA_CICD_DGOSS_TEST_FILE
+        typeValidations: |
+          string:
+            - GHA_CICD_DGOSS_TEST_FILE
+
     - name: Install dgoss/goss
       shell: bash
       run: |
         mkdir -p "$HOME/bin"
-        curl -fsSL https://github.com/aelsabbahy/goss/releases/latest/download/goss-linux-amd64 -o "$HOME/bin/goss"
-        curl -fsSL https://github.com/aelsabbahy/goss/releases/latest/download/dgoss -o "$HOME/bin/dgoss"
-        chmod +x "$HOME/bin/goss" "$HOME/bin/dgoss"
+        curl -fsSL "$GHA_CICD_LOCAL_GOSS_URL" -o "$HOME/bin/goss"
+        curl -fsSL "$GHA_CICD_LOCAL_DGOSS_URL" -o "$HOME/bin/dgoss"
+        chmod +x "$HOME/bin/dgoss" "$HOME/bin/goss"
         echo "$HOME/bin" >> $GITHUB_PATH
 
     - name: Run dgoss Tests
@@ -20,10 +38,10 @@ runs:
           echo "::error::? dgoss test file not found: $GHA_CICD_DGOSS_TEST_FILE"
           exit 1
         fi
+
+        export GOSS_FILES_STRATEGY=cp
         export GOSS_FILE="$GHA_CICD_DGOSS_TEST_FILE"
-        echo $PATH
-        goss --version
-        dgoss run --entrypoint tail ${{ env.GHA_CICD_LOCAL_IMAGE_NAME }} -f /dev/null | tee dgoss-report.txt
+        dgoss run --entrypoint sleep ${{ env.GHA_CICD_LOCAL_DOCKER_IMAGE_NAME }} infinity | tee dgoss-report.txt
 
     - name: Upload dgoss Test Report
       uses: actions/upload-artifact@v4
@@ -31,3 +49,9 @@ runs:
       with:
         name: dgoss-report
         path: dgoss-report.txt
+
+    - name: Post Step (Docker Image Test)
+      if: ${{ !cancelled() }}
+      shell: bash
+      run: |
+        echo "[POST] Placeholder for post-test actions."

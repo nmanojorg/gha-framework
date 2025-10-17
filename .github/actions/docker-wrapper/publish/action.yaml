@@ -4,6 +4,43 @@ description: "Pushes Docker image to a registry using docker/build-push-action. 
 runs:
   using: "composite"
   steps:
+    - name: Pre Step (Publish Docker Image)
+      shell: bash
+      run: |
+        echo "[PRE] Placeholder for pre-publish actions."
+
+    - name: Validate Inputs and Environment (Docker Publish)
+      uses: ./cicd-shared-lib/.github/actions/utils/validate-inputs
+      with:
+        actionInputs: |
+          GHA_CICD_DOCKERFILE_PATH: "${{ env.GHA_CICD_DOCKERFILE_PATH }}"
+          GHA_CICD_DOCKER_CONTEXT: "${{ env.GHA_CICD_DOCKER_CONTEXT }}"
+          GHA_CICD_DOCKER_IMAGE_URLS: "${{ env.GHA_CICD_DOCKER_IMAGE_URLS }}"
+          GHA_CICD_DOCKER_BUILD_ARGS: "${{ env.GHA_CICD_DOCKER_BUILD_ARGS }}"
+          GHA_CICD_DOCKER_BUILD_ARGS_FILE: "${{ env.GHA_CICD_DOCKER_BUILD_ARGS_FILE }}"
+          GHA_CICD_DOCKER_CONFIG_JSON: "${{ env.GHA_CICD_DOCKER_CONFIG_JSON != '' }}"
+        requiredInputs: |
+          - GHA_CICD_DOCKER_CONTEXT
+          - GHA_CICD_DOCKERFILE_PATH
+          - GHA_CICD_DOCKER_IMAGE_URLS
+          - GHA_CICD_DOCKER_CONFIG_JSON
+        optionalInputs: |
+          - GHA_CICD_DOCKER_BUILD_ARGS
+          - GHA_CICD_DOCKER_BUILD_ARGS_FILE
+        filesPathInputs: |
+          - GHA_CICD_DOCKERFILE_PATH
+          - GHA_CICD_DOCKER_BUILD_ARGS_FILE
+        typeValidations: |
+          string:
+            - GHA_CICD_DOCKERFILE_PATH
+            - GHA_CICD_DOCKER_CONTEXT
+            - GHA_CICD_DOCKER_BUILD_ARGS
+            - GHA_CICD_DOCKER_BUILD_ARGS_FILE
+            - GHA_CICD_DOCKER_IMAGE_URLS
+            - GHA_CICD_DOCKER_CONFIG_JSON
+        delimiterValidations: |
+            GHA_CICD_DOCKER_IMAGE_URLS: ","
+            GHA_CICD_DOCKER_BUILD_ARGS: " "
 
     - name: Setup .docker/config.json
       shell: bash
@@ -14,14 +51,13 @@ runs:
         echo "Wrote Docker config to $HOME/.docker/config.json"
         echo "::endgroup::"
 
-    - name: Prepare Build Args List
+    - name: Prepare Build Args
       id: prep_build_args
       shell: bash
       run: |
         BUILD_ARGS=$(python3 "./cicd-shared-lib/.github/actions/docker-wrapper/utils/prepare_build_args.py")
-        BUILD_ARGS_LIST=$(echo "$BUILD_ARGS" | tr ' ' '\n')
         echo "build-args<<EOF" >> $GITHUB_OUTPUT
-        echo "$BUILD_ARGS_LIST" >> $GITHUB_OUTPUT
+        echo "$BUILD_ARGS" >> $GITHUB_OUTPUT
         echo "EOF" >> $GITHUB_OUTPUT
 
     - name: Push Docker Image to Registry
@@ -32,3 +68,9 @@ runs:
         tags: ${{ env.GHA_CICD_DOCKER_IMAGE_URLS }}
         build-args: ${{ steps.prep_build_args.outputs.build-args }}
         push: true
+
+    - name: Post Step (Publish Docker Image)
+      if: ${{ !cancelled() }}
+      shell: bash
+      run: |
+        echo "[POST] Placeholder for post-publish actions."

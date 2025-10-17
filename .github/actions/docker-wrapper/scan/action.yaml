@@ -1,63 +1,111 @@
-name: "Scan (Xray)"
-description: "Performs JFrog Xray vulnerability scan on a built Docker image tarball. Uses only GHA_CICD_ env vars for configuration."
+name: "Docker Xray Scan"
+description: "Runs Xray vulnerability scan on a Docker image tar using JFrog CLI. Uploads the scan report and fails build on blocking severities."
 
 runs:
   using: "composite"
   steps:
-    - name: Perform Xray Scan
+    - name: Pre Step (Docker Xray Scan)
       shell: bash
       run: |
-        if [ "${GHA_CICD_RUN_XRAY_SCAN}" != "true" ]; then
-          echo "Xray scan skipped"
-          exit 0
-        fi
+        echo "[PRE] Placeholder for pre-scan actions."
 
-        docker run --rm \
-          -v "$GITHUB_WORKSPACE:/workspace" \
-          -w /workspace \
-          "${GHA_CICD_XRAY_SCAN_IMAGE}" \
-          sh -c '
-            set -e
-            curl -k -fL "${GHA_CICD_JFROG_CLI_URL}" -o /usr/local/bin/jf
-            chmod +x /usr/local/bin/jf
-            mkdir -p /usr/local/share/ca-certificates
-            if [ -n "${GHA_CICD_NBN_CERT_URL}" ]; then
-              curl -k "${GHA_CICD_NBN_CERT_URL}" -o /usr/local/share/ca-certificates/nbn.crt
-              update-ca-trust extract || update-ca-certificates || true
+    - name: Validate Inputs and Environment (Docker Scan)
+      uses: ./cicd-shared-lib/.github/actions/utils/validate-inputs
+      with:
+        actionInputs: | 
+          GHA_CICD_XRAY_LOG: "${{ env.GHA_CICD_XRAY_LOG }}"
+          GHA_CICD_XRAY_WATCHES: "${{ env.GHA_CICD_XRAY_WATCHES }}"
+          GHA_CICD_XRAY_IGNORED_SEVERITIES: "${{ env.GHA_CICD_XRAY_IGNORED_SEVERITIES }}"
+          GHA_CICD_APRO_USERNAME: "${{ env.GHA_CICD_APRO_USERNAME }}"
+          GHA_CICD_APRO_PASSWORD: "${{ env.GHA_CICD_APRO_PASSWORD != '' }}"
+        requiredInputs: |
+          - GHA_CICD_APRO_USERNAME
+          - GHA_CICD_APRO_PASSWORD
+        optionalInputs: |
+          - GHA_CICD_XRAY_LOG
+          - GHA_CICD_XRAY_WATCHES
+          - GHA_CICD_XRAY_IGNORED_SEVERITIES
+        typeValidations: |
+          string:
+            - GHA_CICD_XRAY_LOG
+            - GHA_CICD_XRAY_WATCHES
+            - GHA_CICD_XRAY_IGNORED_SEVERITIES
+            - GHA_CICD_APRO_USERNAME
+            - GHA_CICD_APRO_PASSWORD
+        delimiterValidations: |
+            GHA_CICD_XRAY_IGNORED_SEVERITIES: ","
+
+    - name: Xray Scan Setup & Execution
+      shell: bash
+      run: |
+        echo "::group::Download JFrog CLI"
+        sudo curl --fail -k -fL "$GHA_CICD_LOCAL_JFROG_CLI_URL" -o /usr/local/bin/jf
+        sudo chmod +x /usr/local/bin/jf
+        echo "::endgroup::"
+
+        echo "::group::Add CA Certificate"
+        if [ -n "${GHA_CICD_LOCAL_NBN_CERT_URL}" ]; then
+          mkdir -p /usr/local/share/ca-certificates
+          sudo curl --fail -k "$GHA_CICD_LOCAL_NBN_CERT_URL" -o /usr/local/share/ca-certificates/nbn.crt
+          update-ca-trust extract || update-ca-certificates || true
+        fi
+        echo "::endgroup::"
+
+        echo "::group::Configure JFrog CLI"
+        export JFROG_CLI_LOG_LEVEL="$GHA_CICD_XRAY_LOG"
+        jf config add apro \
+          --url="$GHA_CICD_LOCAL_APRO_BASE_URL" \
+          --artifactory-url="$GHA_CICD_LOCAL_APRO_BASE_URL" \
+          --xray-url="$GHA_CICD_LOCAL_APRO_BASE_URL/xray" \
+          --user="$GHA_CICD_APRO_USERNAME" \
+          --password="$GHA_CICD_APRO_PASSWORD" \
+          --interactive=false
+        echo "::endgroup::"
+
+        echo "::group::Run Xray Scan"
+        mkdir -p xrayReport
+        REPORT_NAME="xray-${GITHUB_RUN_ID}"
+        WATCH_VALUE="${GHA_CICD_XRAY_WATCHES}"
+        if ! jf scan "$GHA_CICD_LOCAL_DOCKER_IMAGE_TAR" --watches "$WATCH_VALUE" --format=table --fixable-only > xrayReport/$REPORT_NAME.txt; then
+          echo "::error::Xray scan failed to execute"
+          jf config remove apro --quiet
+          echo "::endgroup::"
+          exit 1
+        fi
+        echo "Scan completed. See xrayReport/$REPORT_NAME.txt"
+        echo "::endgroup::"
+
+        echo "::group::Vulnerability Check"
+        cat xrayReport/$REPORT_NAME.txt
+        ALL_SEVERITIES="${GHA_CICD_XRAY_ALL_SEVERITIES}"
+        FOUND_VULN=0
+        for SEV in $ALL_SEVERITIES; do
+          if ! echo "${GHA_CICD_XRAY_IGNORED_SEVERITIES}" | grep -qw "$SEV"; then
+            if grep -iq "$SEV" xrayReport/$REPORT_NAME.txt; then
+              FOUND_VULN=1
+              echo "::error::Found blocking severity: $SEV"
             fi
-            export JFROG_CLI_LOG_LEVEL="${GHA_CICD_XRAY_LOG:-INFO}"
-            jf config add apro \
-              --url="${GHA_CICD_APRO_BASE_URL}" \
-              --artifactory-url="${GHA_CICD_APRO_BASE_URL}" \
-              --xray-url="${GHA_CICD_APRO_BASE_URL}/xray" \
-              --user="${GHA_CICD_APRO_USERNAME}" \
-              --password="${GHA_CICD_APRO_PASSWORD}" \
-              --interactive=false
-            mkdir -p xrayReport
-            REPORT_NAME="xray-${GITHUB_RUN_ID}"
-            jf scan "${GHA_CICD_TEMP_IMAGE_TAR}" --watches "${GHA_CICD_WATCHES}" --format=table --fixable-only > xrayReport/$REPORT_NAME.txt
-            cat xrayReport/$REPORT_NAME.txt
-            ALL_SEVERITIES="${GHA_CICD_ALL_SEVERITIES:-Critical High Medium Low}"
-            FOUND_VULN=0
-            for SEV in $ALL_SEVERITIES; do
-              if ! echo "${GHA_CICD_IGNORED_SEVERITIES}" | grep -qw "$SEV"; then
-                if grep -iq "$SEV" xrayReport/$REPORT_NAME.txt; then
-                  FOUND_VULN=1
-                  echo "Found blocking severity: $SEV"
-                fi
-              fi
-            done
-            jf config remove apro --quiet
-            if [ $FOUND_VULN -gt 0 ]; then
-              echo "Build failed due to Xray vulnerabilities."
-              exit 1
-            fi
-          '
+          fi
+        done
+        jf config remove apro --quiet
+        if [ $FOUND_VULN -gt 0 ]; then
+          echo "::error::Build failed due to Xray vulnerabilities."
+          echo "::endgroup::"
+          exit 1
+        fi
+        echo "::endgroup::"
+        echo "***** END XRAY SCAN *****"
 
     - name: Upload Xray Report
+      if: ${{ !cancelled() }}
       uses: actions/upload-artifact@v4
-      if: ${{ !cancelled() && env.GHA_CICD_RUN_XRAY_SCAN == 'true' }}
       with:
         name: xray-report-${{ github.run_id }}-${{ github.job }}
         path: xrayReport/xray-${{ github.run_id }}.txt
         overwrite: true
+
+    - name: Post Step (Docker Xray Scan)
+      if: ${{ !cancelled() }}
+      shell: bash
+      run: |
+        echo "[POST] Placeholder for post-scan actions."
