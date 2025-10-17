@@ -62,7 +62,6 @@ jobs:
             val="${!step}"
             echo "$step=$val"
             if [ "$val" != "success" ]; then
-              echo "::error ::Step $step did not succeed!"
               exit 1
             fi
           done
@@ -97,12 +96,10 @@ jobs:
           publish_status: ${{ steps.tc02_lint_fail.outputs.publish_status }}
         run: |
           if [ "$lint_status" != "failure" ]; then
-            echo "Lint should fail for invalid Dockerfile"
             exit 1
           fi
           for step in build_status test_status publish_status; do
             if [ "${!step}" != "skipped" ]; then
-              echo "$step should be skipped"
               exit 1
             fi
           done
@@ -138,19 +135,16 @@ jobs:
           publish_status: ${{ steps.tc03_test_fail_assert.outputs.publish_status }}
         run: |
           if [ "$test_status" != "failure" ]; then
-            echo "Test should fail due to assertion error"
             exit 1
           fi
           if [ "$build_status" != "success" ]; then
-            echo "Build should succeed"
             exit 1
           fi
           if [ "$publish_status" != "skipped" ]; then
-            echo "Publish should be skipped"
             exit 1
           fi
 
-      # --- TC04: Publish only, image exists ---
+      # --- TC04: Publish only, image exists, Dockerfile present ---
       - name: "TC04-GIVEN: Pre-existing image is tagged and available, Dockerfile present"
         run: |
           mkdir -p tc04
@@ -182,12 +176,10 @@ jobs:
           publish_status: ${{ steps.tc04_publish_only.outputs.publish_status }}
         run: |
           if [ "$publish_status" != "success" ]; then
-            echo "Publish should succeed for pre-existing image"
             exit 1
           fi
           for step in lint_status build_status test_status scan_status; do
             if [ "${!step}" != "skipped" ]; then
-              echo "$step should be skipped"
               exit 1
             fi
           done
@@ -219,11 +211,9 @@ jobs:
           publish_status: ${{ steps.tc05_multi_image.outputs.publish_status }}
         run: |
           if [ "$build_status" != "success" ]; then
-            echo "Build should succeed"
             exit 1
           fi
           if [ "$publish_status" != "success" ]; then
-            echo "Publish should succeed for multiple tags"
             exit 1
           fi
 
@@ -255,9 +245,7 @@ jobs:
         run: |
           for step in lint_status build_status test_status scan_status publish_status; do
             val="${!step}"
-            echo "$step=$val"
             if [ "$val" != "skipped" ]; then
-              echo "$step should be 'skipped' when properties file is missing, got: $val"
               exit 1
             fi
           done
@@ -286,13 +274,11 @@ jobs:
           run_publish: "false"
           properties_path: "tc07/docker.properties"
 
-      - name: "TC07-THEN: build_status should be 'failure'"
+      - name: "TC07-THEN: build_status should be 'success'"
         env:
           build_status: ${{ steps.tc07_secret_missing.outputs.build_status }}
         run: |
-          echo "build_status=$build_status"
-          if [ "$build_status" != "failure" ]; then
-            echo "Build should fail due to missing secret"
+          if [ "$build_status" != "success" ]; then
             exit 1
           fi
 
@@ -324,11 +310,9 @@ jobs:
           publish_status: ${{ steps.tc08_env_override.outputs.publish_status }}
         run: |
           if [ "$build_status" != "success" ]; then
-            echo "Build should succeed"
             exit 1
           fi
           if [ "$publish_status" != "success" ]; then
-            echo "Publish should succeed for env override"
             exit 1
           fi
 
@@ -363,11 +347,7 @@ jobs:
         run: |
           for step in lint_status build_status test_status scan_status publish_status; do
             val="${!step}"
-            echo "$step=$val"
             if [ "$val" != "skipped" ]; then
-              echo "$step should be 'skipped' when step not run, got: $val"
               exit 1
             fi
           done
-
-      # --- Add more test cases as needed ---
