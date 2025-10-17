@@ -34,13 +34,11 @@ jobs:
           mkdir -p tc01
           echo "FROM alpine:3.18" > tc01/Dockerfile
           echo -e "file:\n  /bin/sh:\n    exists: true" > tc01/goss.yaml
-          
           echo "GHA_CICD_DOCKERFILE_PATH=tc01/Dockerfile" > tc01/docker.properties
           echo "GHA_CICD_DOCKER_CONTEXT=." >> tc01/docker.properties
           echo "GHA_CICD_DOCKER_CONFIG_JSON=${{ secrets.DOCKER_CONFIG_JSON }}" >> tc01/docker.properties
           echo "GHA_CICD_DGOSS_TEST_FILE=tc01/goss.yaml" >> tc01/docker.properties
           echo "GHA_CICD_DOCKER_IMAGE_URLS=localhost:5000/test-image:tc01," >> tc01/docker.properties
-          
 
       - name: "TC01-WHEN: docker-wrapper is run with all steps enabled"
         id: docker_wrapper_tc01
@@ -77,7 +75,10 @@ jobs:
         run: |
           mkdir -p tc02
           echo "INVALID DOCKERFILE" > tc02/Dockerfile
-          echo "GHA_CICD_LOCAL_DOCKER_IMAGE_NAME=localhost:5000/test-image:tc02" > tc02/docker.properties
+          echo "GHA_CICD_DOCKERFILE_PATH=tc02/Dockerfile" > tc02/docker.properties
+          echo "GHA_CICD_DOCKER_CONTEXT=." >> tc02/docker.properties
+          echo "GHA_CICD_DOCKER_CONFIG_JSON=${{ secrets.DOCKER_CONFIG_JSON }}" >> tc02/docker.properties
+          echo "GHA_CICD_DOCKER_IMAGE_URLS=localhost:5000/test-image:tc02," >> tc02/docker.properties
 
       - name: "TC02-WHEN: docker-wrapper is run with only lint enabled"
         id: docker_wrapper_tc02
@@ -106,8 +107,11 @@ jobs:
         run: |
           mkdir -p tc03
           echo "FROM alpine:3.18" > tc03/Dockerfile
-          echo "GHA_CICD_LOCAL_DOCKER_IMAGE_NAME=localhost:5000/test-image:tc03" > tc03/docker.properties
+          echo "GHA_CICD_DOCKERFILE_PATH=tc03/Dockerfile" > tc03/docker.properties
+          echo "GHA_CICD_DOCKER_CONTEXT=." >> tc03/docker.properties
+          echo "GHA_CICD_DOCKER_CONFIG_JSON=${{ secrets.DOCKER_CONFIG_JSON }}" >> tc03/docker.properties
           echo "GHA_CICD_DGOSS_TEST_FILE=tc03/goss.yaml" >> tc03/docker.properties
+          echo "GHA_CICD_DOCKER_IMAGE_URLS=localhost:5000/test-image:tc03," >> tc03/docker.properties
           # Do NOT create tc03/goss.yaml
 
       - name: "TC03-WHEN: docker-wrapper is run with build and test enabled"
@@ -137,7 +141,10 @@ jobs:
         run: |
           mkdir -p tc04
           echo "FROM alpine:3.18" > tc04/Dockerfile
-          echo "GHA_CICD_LOCAL_DOCKER_IMAGE_NAME=localhost:5000/test-image:tc04" > tc04/docker.properties
+          echo "GHA_CICD_DOCKERFILE_PATH=tc04/Dockerfile" > tc04/docker.properties
+          echo "GHA_CICD_DOCKER_CONTEXT=." >> tc04/docker.properties
+          echo "GHA_CICD_DOCKER_CONFIG_JSON=${{ secrets.DOCKER_CONFIG_JSON }}" >> tc04/docker.properties
+          echo "GHA_CICD_DOCKER_IMAGE_URLS=localhost:5000/test-image:tc04," >> tc04/docker.properties
 
       - name: "TC04-WHEN: docker-wrapper is run with publish enabled, build disabled"
         id: docker_wrapper_tc04
@@ -166,7 +173,10 @@ jobs:
         run: |
           mkdir -p tc05
           echo "FROM alpine:3.18" > tc05/Dockerfile
-          echo "GHA_CICD_LOCAL_DOCKER_IMAGE_NAME=localhost:5000/test-image:tc05" > tc05/docker.properties
+          echo "GHA_CICD_DOCKERFILE_PATH=tc05/Dockerfile" > tc05/docker.properties
+          echo "GHA_CICD_DOCKER_CONTEXT=." >> tc05/docker.properties
+          echo "GHA_CICD_DOCKER_CONFIG_JSON=${{ secrets.DOCKER_CONFIG_JSON }}" >> tc05/docker.properties
+          echo "GHA_CICD_DOCKER_IMAGE_URLS=localhost:5000/test-image:tc05," >> tc05/docker.properties
 
       - name: "TC05-WHEN: docker-wrapper is run with all steps disabled"
         id: docker_wrapper_tc05
@@ -199,4 +209,3 @@ jobs:
       ########################################################################
 
       # Add more test cases here (e.g., scan, registry unreachable, etc.)
-
