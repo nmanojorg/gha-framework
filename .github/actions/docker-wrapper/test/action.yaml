@@ -41,6 +41,7 @@ runs:
 
         export GOSS_FILES_STRATEGY=cp
         export GOSS_FILE="$GHA_CICD_DGOSS_TEST_FILE"
+        cat $GHA_CICD_DGOSS_TEST_FILE
         dgoss run --entrypoint sleep ${{ env.GHA_CICD_LOCAL_DOCKER_IMAGE_NAME }} infinity | tee dgoss-report.txt
 
     - name: Upload dgoss Test Report
