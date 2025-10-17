@@ -33,9 +33,14 @@ jobs:
         run: |
           mkdir -p tc01
           echo "FROM alpine:3.18" > tc01/Dockerfile
-          echo "GHA_CICD_LOCAL_DOCKER_IMAGE_NAME=localhost:5000/test-image:tc01" > tc01/docker.properties
-          echo "GHA_CICD_DGOSS_TEST_FILE=tc01/goss.yaml" >> tc01/docker.properties
           echo "file: /bin/sh\nexists: true" > tc01/goss.yaml
+          
+          echo "GHA_CICD_DOCKERFILE_PATH=tc01/Dockerfile" > tc01/docker.properties
+          echo "GHA_CICD_DOCKER_CONTEXT=." >> tc01/docker.properties
+          echo "GHA_CICD_DOCKER_CONFIG_JSON=${{ secrets.DOCKER_CONFIG_JSON }}" >> tc01/docker.properties
+          echo "GHA_CICD_DGOSS_TEST_FILE=tc01/goss.yaml" >> tc01/docker.properties
+          echo "GHA_CICD_LOCAL_DOCKER_IMAGE_NAME=localhost:5000/test-image:tc01" >> tc01/docker.properties
+          
 
       - name: "TC01-WHEN: docker-wrapper is run with all steps enabled"
         id: docker_wrapper_tc01
@@ -194,3 +199,4 @@ jobs:
       ########################################################################
 
       # Add more test cases here (e.g., scan, registry unreachable, etc.)
+
