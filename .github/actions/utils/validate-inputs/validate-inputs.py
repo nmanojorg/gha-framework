@@ -162,7 +162,7 @@ def validate_delimiters(inputs, delimiter_map, required, optional, errors):
                     errors.append(f"? Missing or empty required input for delimiter validation: '{key}'")
                     print(f"Missing or empty required for delimiter: {key}")
                 continue
-            if delimiter not in value and any(d in value for d in [',', ';', '|', ':', ' '] - {delimiter}):
+            if delimiter not in value and any(d in value for d in set([',', ';', '|', ':', ' ']) - {delimiter}):
                 errors.append(f"? Value for '{key}' does not contain the specified delimiter '{delimiter}': '{value}'")
                 print(f"Delimiter '{delimiter}' not found in {key}: {value}")
             else:
