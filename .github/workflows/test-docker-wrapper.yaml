@@ -203,9 +203,9 @@ jobs:
           for step in lint_status build_status test_status scan_status publish_status; do
             val="${!step}"
             echo "$step=$val"
-            if [ -n "$val" ]; then
-              echo "$step should be empty when step not run"
-              exit 1
+            if [ "$val" != "skipped" ]; then
+              echo "$step should be 'skipped' when step not run, got: $val"
+              FAIL=1
             fi
           done
 
