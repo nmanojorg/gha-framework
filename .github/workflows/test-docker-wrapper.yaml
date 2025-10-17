@@ -365,37 +365,21 @@ jobs:
           done
 
 
-      # --- TC10: Missing Dockerfile (should skip all steps) ---
-      - name: "TC10-GIVEN: Properties file exists, but Dockerfile is missing"
-        run: |
-          mkdir -p tc10
-          echo "GHA_CICD_DOCKERFILE_PATH=tc10/Dockerfile" > tc10/docker.properties
-          echo "GHA_CICD_DOCKER_CONTEXT=tc10" >> tc10/docker.properties
-          echo "GHA_CICD_DOCKER_CONFIG_JSON=${{ secrets.DOCKER_CONFIG_JSON }}" >> tc10/docker.properties
-          echo "GHA_CICD_DOCKER_IMAGE_URLS=localhost:5000/test-image:tc10," >> tc10/docker.properties
-
-      - name: "TC10-WHEN: docker-wrapper is run with lint enabled but Dockerfile missing"
-        id: tc10_missing_dockerfile
-        continue-on-error: true
-        uses: ./shared-library/.github/actions/docker-wrapper
-        with:
-          run_lint: "true"
-          run_build: "false"
-          run_test: "false"
-          run_scan: "false"
-          run_publish: "false"
-          properties_path: "tc10/docker.properties"
-
-      - name: "TC10-THEN: all outputs should be 'skipped'"
+      - name: "TC10-THEN: lint_status should be 'failure', others skipped"
         env:
           lint_status: ${{ steps.tc10_missing_dockerfile.outputs.lint_status }}
           build_status: ${{ steps.tc10_missing_dockerfile.outputs.build_status }}
           test_status: ${{ steps.tc10_missing_dockerfile.outputs.test_status }}
           publish_status: ${{ steps.tc10_missing_dockerfile.outputs.publish_status }}
         run: |
-          for step in lint_status build_status test_status publish_status; do
+          if [ "$lint_status" != "failure" ]; then
+            echo "Expected lint_status to be 'failure', got $lint_status"
+            exit 1
+          fi
+          for step in build_status test_status publish_status; do
             val="${!step}"
             if [ "$val" != "skipped" ]; then
+              echo "$step should be 'skipped' when Dockerfile is missing, got: $val"
               exit 1
             fi
           done
@@ -529,4 +513,3 @@ jobs:
           if [ "$test_status" != "failure" ]; then
             exit 1
           fi
-          
