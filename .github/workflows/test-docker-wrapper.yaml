@@ -82,6 +82,7 @@ jobs:
 
       - name: "TC02-WHEN: docker-wrapper is run with only lint enabled"
         id: docker_wrapper_tc02
+        continue-on-error: true
         uses: ./shared-library/.github/actions/docker-wrapper
         with:
           run_lint: "true"
@@ -116,6 +117,7 @@ jobs:
 
       - name: "TC03-WHEN: docker-wrapper is run with build and test enabled"
         id: docker_wrapper_tc03
+        continue-on-error: true
         uses: ./shared-library/.github/actions/docker-wrapper
         with:
           run_lint: "false"
@@ -148,6 +150,7 @@ jobs:
 
       - name: "TC04-WHEN: docker-wrapper is run with publish enabled, build disabled"
         id: docker_wrapper_tc04
+        continue-on-error: true
         uses: ./shared-library/.github/actions/docker-wrapper
         with:
           run_lint: "false"
