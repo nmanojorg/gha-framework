@@ -166,7 +166,7 @@ jobs:
         run: |
           echo "publish_status=$publish_status"
           if [ "$publish_status" != "failure" ]; then
-            echo "Publish should fail because build did not run"
+            echo "Publish should fail because image does not exist"
             exit 1
           fi
 
