@@ -33,7 +33,7 @@ jobs:
         run: |
           mkdir -p tc01
           echo "FROM alpine:3.18" > tc01/Dockerfile
-          echo "file: /bin/sh\nexists: true" > tc01/goss.yaml
+          echo -e "file:\n  /bin/sh:\n    exists: true" > tc01/goss.yaml
           
           echo "GHA_CICD_DOCKERFILE_PATH=tc01/Dockerfile" > tc01/docker.properties
           echo "GHA_CICD_DOCKER_CONTEXT=." >> tc01/docker.properties
