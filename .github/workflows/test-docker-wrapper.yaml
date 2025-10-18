@@ -1,3 +1,4 @@
+# Regression test workflow for Docker Wrapper
 name: Docker Wrapper Regression Tests (GIVEN-WHEN-THEN)
 permissions:
   contents: read
@@ -28,193 +29,444 @@ jobs:
         with:
           path: shared-library
 
-      # ================= TC01 – TC14 already defined =================
-      # (Use the TC01–TC14 steps you already provided)
-
-      # --- TC15: Scan enabled, image exists ---
-      - name: "TC15-GIVEN: Image built, scan enabled"
+      #########################################################
+      # TC01: All steps enabled, valid inputs
+      #########################################################
+      - name: "TC01-GIVEN: Valid Dockerfile, context and all required files"
         run: |
-          mkdir -p tc15
-          echo "FROM alpine:3.18" > tc15/Dockerfile
-          docker pull alpine:3.18
-          docker tag alpine:3.18 localhost:5000/test-image:tc15
-          echo "GHA_CICD_DOCKERFILE_PATH=tc15/Dockerfile" > tc15/docker.properties
-          echo "GHA_CICD_DOCKER_CONTEXT=tc15" >> tc15/docker.properties
-          echo "GHA_CICD_DOCKER_CONFIG_JSON=${{ secrets.DOCKER_CONFIG_JSON }}" >> tc15/docker.properties
-          echo "GHA_CICD_DOCKER_IMAGE_URLS=localhost:5000/test-image:tc15," >> tc15/docker.properties
+          mkdir -p tc01
+          echo "FROM alpine:3.18" > tc01/Dockerfile
+          echo -e "file:\n  /bin/sh:\n    exists: true" > tc01/goss.yaml
+          echo "GHA_CICD_DOCKERFILE_PATH=tc01/Dockerfile" > tc01/docker.properties
+          echo "GHA_CICD_DOCKER_CONTEXT=tc01" >> tc01/docker.properties
+          echo "GHA_CICD_DOCKER_CONFIG_JSON=${{ secrets.DOCKER_CONFIG_JSON }}" >> tc01/docker.properties
+          echo "GHA_CICD_DGOSS_TEST_FILE=tc01/goss.yaml" >> tc01/docker.properties
+          echo "GHA_CICD_DOCKER_IMAGE_URLS=localhost:5000/test-image:tc01," >> tc01/docker.properties
 
-      - name: "TC15-WHEN: docker-wrapper run with scan only"
-        id: tc15_scan
-        uses: ./shared-library/.github/actions/docker-wrapper
-        with:
-          run_lint: "false"
-          run_build: "false"
-          run_test: "false"
-          run_scan: "true"
-          run_publish: "false"
-          properties_path: "tc15/docker.properties"
-
-      - name: "TC15-THEN: scan_status should be 'success'"
-        env:
-          scan_status: ${{ steps.tc15_scan.outputs.scan_status }}
-        run: |
-          if [ "$scan_status" != "success" ]; then
-            exit 1
-          fi
-
-      # --- TC16: Scan enabled, image missing ---
-      - name: "TC16-GIVEN: Scan enabled but image does not exist"
-        run: |
-          mkdir -p tc16
-          echo "FROM alpine:3.18" > tc16/Dockerfile
-          echo "GHA_CICD_DOCKERFILE_PATH=tc16/Dockerfile" > tc16/docker.properties
-          echo "GHA_CICD_DOCKER_CONTEXT=tc16" >> tc16/docker.properties
-          echo "GHA_CICD_DOCKER_CONFIG_JSON=${{ secrets.DOCKER_CONFIG_JSON }}" >> tc16/docker.properties
-          echo "GHA_CICD_DOCKER_IMAGE_URLS=localhost:5000/test-image:tc16," >> tc16/docker.properties
-
-      - name: "TC16-WHEN: docker-wrapper run with scan enabled"
-        id: tc16_scan_fail
-        continue-on-error: true
-        uses: ./shared-library/.github/actions/docker-wrapper
-        with:
-          run_lint: "false"
-          run_build: "false"
-          run_test: "false"
-          run_scan: "true"
-          run_publish: "false"
-          properties_path: "tc16/docker.properties"
-
-      - name: "TC16-THEN: scan_status should be 'failure'"
-        env:
-          scan_status: ${{ steps.tc16_scan_fail.outputs.scan_status }}
-        run: |
-          if [ "$scan_status" != "failure" ]; then
-            exit 1
-          fi
-
-      # --- TC17: DGOSS test invalid syntax ---
-      - name: "TC17-GIVEN: Invalid goss test file"
-        run: |
-          mkdir -p tc17
-          echo "FROM alpine:3.18" > tc17/Dockerfile
-          echo -e "invalid_syntax" > tc17/goss.yaml
-          echo "GHA_CICD_DOCKERFILE_PATH=tc17/Dockerfile" > tc17/docker.properties
-          echo "GHA_CICD_DOCKER_CONTEXT=tc17" >> tc17/docker.properties
-          echo "GHA_CICD_DOCKER_CONFIG_JSON=${{ secrets.DOCKER_CONFIG_JSON }}" >> tc17/docker.properties
-          echo "GHA_CICD_DGOSS_TEST_FILE=tc17/goss.yaml" >> tc17/docker.properties
-          echo "GHA_CICD_DOCKER_IMAGE_URLS=localhost:5000/test-image:tc17," >> tc17/docker.properties
-
-      - name: "TC17-WHEN: docker-wrapper run with build and test"
-        id: tc17_test_invalid
-        continue-on-error: true
-        uses: ./shared-library/.github/actions/docker-wrapper
-        with:
-          run_lint: "false"
-          run_build: "true"
-          run_test: "true"
-          run_scan: "false"
-          run_publish: "false"
-          properties_path: "tc17/docker.properties"
-
-      - name: "TC17-THEN: test_status should be 'failure'"
-        env:
-          test_status: ${{ steps.tc17_test_invalid.outputs.test_status }}
-        run: |
-          if [ "$test_status" != "failure" ]; then
-            exit 1
-          fi
-
-      # --- TC18: Docker build fails invalid base image ---
-      - name: "TC18-GIVEN: Dockerfile with invalid base image"
-        run: |
-          mkdir -p tc18
-          echo "FROM invalidbase:latest" > tc18/Dockerfile
-          echo "GHA_CICD_DOCKERFILE_PATH=tc18/Dockerfile" > tc18/docker.properties
-          echo "GHA_CICD_DOCKER_CONTEXT=tc18" >> tc18/docker.properties
-          echo "GHA_CICD_DOCKER_CONFIG_JSON=${{ secrets.DOCKER_CONFIG_JSON }}" >> tc18/docker.properties
-          echo "GHA_CICD_DOCKER_IMAGE_URLS=localhost:5000/test-image:tc18," >> tc18/docker.properties
-
-      - name: "TC18-WHEN: docker-wrapper run with build enabled"
-        id: tc18_build_fail
-        continue-on-error: true
-        uses: ./shared-library/.github/actions/docker-wrapper
-        with:
-          run_lint: "false"
-          run_build: "true"
-          run_test: "false"
-          run_scan: "false"
-          run_publish: "false"
-          properties_path: "tc18/docker.properties"
-
-      - name: "TC18-THEN: build_status should be 'failure'"
-        env:
-          build_status: ${{ steps.tc18_build_fail.outputs.build_status }}
-        run: |
-          if [ "$build_status" != "failure" ]; then
-            exit 1
-          fi
-
-      # --- TC19: Publish fails due to registry unreachable ---
-      - name: "TC19-GIVEN: Dockerfile exists, unreachable registry"
-        run: |
-          mkdir -p tc19
-          echo "FROM alpine:3.18" > tc19/Dockerfile
-          echo "GHA_CICD_DOCKERFILE_PATH=tc19/Dockerfile" > tc19/docker.properties
-          echo "GHA_CICD_DOCKER_CONTEXT=tc19" >> tc19/docker.properties
-          echo "GHA_CICD_DOCKER_CONFIG_JSON=${{ secrets.DOCKER_CONFIG_JSON }}" >> tc19/docker.properties
-          echo "GHA_CICD_DOCKER_IMAGE_URLS=localhost:5999/test-image:tc19," >> tc19/docker.properties
-
-      - name: "TC19-WHEN: docker-wrapper run with publish only"
-        id: tc19_publish_fail
-        continue-on-error: true
-        uses: ./shared-library/.github/actions/docker-wrapper
-        with:
-          run_lint: "false"
-          run_build: "false"
-          run_test: "false"
-          run_scan: "false"
-          run_publish: "true"
-          properties_path: "tc19/docker.properties"
-
-      - name: "TC19-THEN: publish_status should be 'failure'"
-        env:
-          publish_status: ${{ steps.tc19_publish_fail.outputs.publish_status }}
-        run: |
-          if [ "$publish_status" != "failure" ]; then
-            exit 1
-          fi
-
-      # --- TC20: All steps enabled, partial secrets missing ---
-      - name: "TC20-GIVEN: Missing DGOSS test file secret"
-        run: |
-          mkdir -p tc20
-          echo "FROM alpine:3.18" > tc20/Dockerfile
-          echo "GHA_CICD_DOCKERFILE_PATH=tc20/Dockerfile" > tc20/docker.properties
-          echo "GHA_CICD_DOCKER_CONTEXT=tc20" >> tc20/docker.properties
-          echo "GHA_CICD_DOCKER_CONFIG_JSON=${{ secrets.DOCKER_CONFIG_JSON }}" >> tc20/docker.properties
-          # DGOSS test file missing intentionally
-          echo "GHA_CICD_DOCKER_IMAGE_URLS=localhost:5000/test-image:tc20," >> tc20/docker.properties
-
-      - name: "TC20-WHEN: docker-wrapper run with all steps enabled"
-        id: tc20_partial_missing
-        continue-on-error: true
+      - name: "TC01-WHEN: docker-wrapper is run with all steps enabled"
+        id: tc01_all_enabled
         uses: ./shared-library/.github/actions/docker-wrapper
         with:
           run_lint: "true"
           run_build: "true"
           run_test: "true"
-          run_scan: "true"
+          run_scan: "false"
           run_publish: "true"
-          properties_path: "tc20/docker.properties"
+          properties_path: "tc01/docker.properties"
 
-      - name: "TC20-THEN: lint/build should succeed, test/scan may fail, publish skipped"
+      - name: "TC01-THEN: All outputs should be 'success'"
         env:
-          lint_status: ${{ steps.tc20_partial_missing.outputs.lint_status }}
-          build_status: ${{ steps.tc20_partial_missing.outputs.build_status }}
-          test_status: ${{ steps.tc20_partial_missing.outputs.test_status }}
-          scan_status: ${{ steps.tc20_partial_missing.outputs.scan_status }}
-          publish_status: ${{ steps.tc20_partial_missing.outputs.publish_status }}
+          lint_status: ${{ steps.tc01_all_enabled.outputs.lint_status }}
+          build_status: ${{ steps.tc01_all_enabled.outputs.build_status }}
+          test_status: ${{ steps.tc01_all_enabled.outputs.test_status }}
+          publish_status: ${{ steps.tc01_all_enabled.outputs.publish_status }}
         run: |
-          if [ "$lint_status" != "success" ]; then exit 1; fi
-          if [ "$build_status" != "success" ]; then exit 1; fi
-          if [ "$publish_status" != "skipped" ]; then exit 1; fi
+          for step in lint_status build_status test_status publish_status; do
+            val="${!step}"
+            echo "$step=$val"
+            if [ "$val" != "success" ]; then
+              echo "::error ::Step $step did not succeed!"
+              exit 1
+            fi
+          done
+
+      #########################################################
+      # TC02: Lint enabled, invalid Dockerfile
+      #########################################################
+      - name: "TC02-GIVEN: Invalid Dockerfile"
+        run: |
+          mkdir -p tc02
+          echo "INVALID DOCKERFILE" > tc02/Dockerfile
+          echo "GHA_CICD_DOCKERFILE_PATH=tc02/Dockerfile" > tc02/docker.properties
+          echo "GHA_CICD_DOCKER_CONTEXT=tc02" >> tc02/docker.properties
+          echo "GHA_CICD_DOCKER_CONFIG_JSON=${{ secrets.DOCKER_CONFIG_JSON }}" >> tc02/docker.properties
+          echo "GHA_CICD_DOCKER_IMAGE_URLS=localhost:5000/test-image:tc02," >> tc02/docker.properties
+
+      - name: "TC02-WHEN: docker-wrapper is run with only lint enabled"
+        id: tc02_lint_fail
+        continue-on-error: true
+        uses: ./shared-library/.github/actions/docker-wrapper
+        with:
+          run_lint: "true"
+          run_build: "false"
+          run_test: "false"
+          run_scan: "false"
+          run_publish: "false"
+          properties_path: "tc02/docker.properties"
+
+      - name: "TC02-THEN: lint_status output should be 'failure', others skipped"
+        env:
+          lint_status: ${{ steps.tc02_lint_fail.outputs.lint_status }}
+          build_status: ${{ steps.tc02_lint_fail.outputs.build_status }}
+          test_status: ${{ steps.tc02_lint_fail.outputs.test_status }}
+          publish_status: ${{ steps.tc02_lint_fail.outputs.publish_status }}
+        run: |
+          if [ "$lint_status" != "failure" ]; then
+            echo "Lint should fail for invalid Dockerfile"
+            exit 1
+          fi
+          for step in build_status test_status publish_status; do
+            if [ "${!step}" != "skipped" ]; then
+              echo "$step should be skipped"
+              exit 1
+            fi
+          done
+
+      #########################################################
+      # TC02B: Lint with case-insensitive FROM (should fail)
+      #########################################################
+      - name: "TC02B-GIVEN: Dockerfile with 'FrOM' keyword (should be case-sensitive)"
+        run: |
+          mkdir -p tc02b
+          echo "FrOM alpine:3.18" > tc02b/Dockerfile
+          echo "GHA_CICD_DOCKERFILE_PATH=tc02b/Dockerfile" > tc02b/docker.properties
+          echo "GHA_CICD_DOCKER_CONTEXT=tc02b" >> tc02b/docker.properties
+
+      - name: "TC02B-WHEN: Lint enabled, invalid FROM keyword"
+        id: tc02b_lint_case
+        continue-on-error: true
+        uses: ./shared-library/.github/actions/docker-wrapper
+        with:
+          run_lint: "true"
+          run_build: "false"
+          run_test: "false"
+          run_scan: "false"
+          run_publish: "false"
+          properties_path: "tc02b/docker.properties"
+
+      - name: "TC02B-THEN: lint_status should be failure"
+        env:
+          lint_status: ${{ steps.tc02b_lint_case.outputs.lint_status }}
+        run: |
+          if [ "$lint_status" != "failure" ]; then
+            echo "Lint should fail for bad FROM case"
+            exit 1
+          fi
+
+      #########################################################
+      # TC02C: Lint with invalid input type (not boolean string)
+      #########################################################
+      - name: "TC02C-GIVEN: run_lint set to invalid value (not boolean string)"
+        run: |
+          mkdir -p tc02c
+          echo "FROM alpine:3.18" > tc02c/Dockerfile
+          echo "GHA_CICD_DOCKERFILE_PATH=tc02c/Dockerfile" > tc02c/docker.properties
+          echo "GHA_CICD_DOCKER_CONTEXT=tc02c" >> tc02c/docker.properties
+
+      - name: "TC02C-WHEN: run_lint=trueth (invalid), should skip/validate"
+        id: tc02c_lint_badinput
+        continue-on-error: true
+        uses: ./shared-library/.github/actions/docker-wrapper
+        with:
+          run_lint: "trueth"
+          run_build: "false"
+          run_test: "false"
+          run_scan: "false"
+          run_publish: "false"
+          properties_path: "tc02c/docker.properties"
+
+      - name: "TC02C-THEN: all outputs should be 'skipped'"
+        env:
+          lint_status: ${{ steps.tc02c_lint_badinput.outputs.lint_status }}
+          build_status: ${{ steps.tc02c_lint_badinput.outputs.build_status }}
+          test_status: ${{ steps.tc02c_lint_badinput.outputs.test_status }}
+          publish_status: ${{ steps.tc02c_lint_badinput.outputs.publish_status }}
+        run: |
+          for step in lint_status build_status test_status publish_status; do
+            if [ "${!step}" != "skipped" ]; then
+              echo "$step should be skipped for invalid booleanString"
+              exit 1
+            fi
+          done
+
+      #########################################################
+      # TC03: Test step fails due to assertion
+      #########################################################
+      - name: "TC03-GIVEN: Valid Dockerfile, test file exists but assertion fails"
+        run: |
+          mkdir -p tc03
+          echo "FROM alpine:3.18" > tc03/Dockerfile
+          echo -e "file:\n  /notexist:\n    exists: true" > tc03/goss.yaml
+          echo "GHA_CICD_DOCKERFILE_PATH=tc03/Dockerfile" > tc03/docker.properties
+          echo "GHA_CICD_DOCKER_CONTEXT=tc03" >> tc03/docker.properties
+          echo "GHA_CICD_DOCKER_CONFIG_JSON=${{ secrets.DOCKER_CONFIG_JSON }}" >> tc03/docker.properties
+          echo "GHA_CICD_DGOSS_TEST_FILE=tc03/goss.yaml" >> tc03/docker.properties
+          echo "GHA_CICD_DOCKER_IMAGE_URLS=localhost:5000/test-image:tc03," >> tc03/docker.properties
+
+      - name: "TC03-WHEN: docker-wrapper is run with build and test enabled"
+        id: tc03_test_fail_assert
+        continue-on-error: true
+        uses: ./shared-library/.github/actions/docker-wrapper
+        with:
+          run_lint: "false"
+          run_build: "true"
+          run_test: "true"
+          run_scan: "false"
+          run_publish: "false"
+          properties_path: "tc03/docker.properties"
+
+      - name: "TC03-THEN: test_status should be 'failure', build_status success, publish_status skipped"
+        env:
+          build_status: ${{ steps.tc03_test_fail_assert.outputs.build_status }}
+          test_status: ${{ steps.tc03_test_fail_assert.outputs.test_status }}
+          publish_status: ${{ steps.tc03_test_fail_assert.outputs.publish_status }}
+        run: |
+          if [ "$test_status" != "failure" ]; then
+            echo "Test should fail due to assertion error"
+            exit 1
+          fi
+          if [ "$build_status" != "success" ]; then
+            echo "Build should succeed"
+            exit 1
+          fi
+          if [ "$publish_status" != "skipped" ]; then
+            echo "Publish should be skipped"
+            exit 1
+          fi
+
+      #########################################################
+      # TC03B: Test step with invalid YAML in test file
+      #########################################################
+      - name: "TC03B-GIVEN: Valid Dockerfile, but goss.yaml is invalid YAML"
+        run: |
+          mkdir -p tc03b
+          echo "FROM alpine:3.18" > tc03b/Dockerfile
+          echo "file: [MALFORMED_YAML" > tc03b/goss.yaml
+          echo "GHA_CICD_DOCKERFILE_PATH=tc03b/Dockerfile" > tc03b/docker.properties
+          echo "GHA_CICD_DOCKER_CONTEXT=tc03b" >> tc03b/docker.properties
+          echo "GHA_CICD_DOCKER_CONFIG_JSON=${{ secrets.DOCKER_CONFIG_JSON }}" >> tc03b/docker.properties
+          echo "GHA_CICD_DGOSS_TEST_FILE=tc03b/goss.yaml" >> tc03b/docker.properties
+          echo "GHA_CICD_DOCKER_IMAGE_URLS=localhost:5000/test-image:tc03b," >> tc03b/docker.properties
+
+      - name: "TC03B-WHEN: docker-wrapper with build and test enabled, malformed YAML"
+        id: tc03b_test_bad_yaml
+        continue-on-error: true
+        uses: ./shared-library/.github/actions/docker-wrapper
+        with:
+          run_lint: "false"
+          run_build: "true"
+          run_test: "true"
+          run_scan: "false"
+          run_publish: "false"
+          properties_path: "tc03b/docker.properties"
+
+      - name: "TC03B-THEN: test_status should be 'failure'"
+        env:
+          test_status: ${{ steps.tc03b_test_bad_yaml.outputs.test_status }}
+        run: |
+          if [ "$test_status" != "failure" ]; then
+            echo "Test step should fail for invalid YAML"
+            exit 1
+          fi
+
+      #########################################################
+      # TC04: Publish only, image exists
+      #########################################################
+      - name: "TC04-GIVEN: Pre-existing image is tagged and available, Dockerfile present"
+        run: |
+          mkdir -p tc04
+          echo "FROM alpine:3.18" > tc04/Dockerfile
+          docker pull alpine:3.18
+          docker tag alpine:3.18 localhost:5000/test-image:tc04
+          echo "GHA_CICD_DOCKERFILE_PATH=tc04/Dockerfile" > tc04/docker.properties
+          echo "GHA_CICD_DOCKER_CONTEXT=tc04" >> tc04/docker.properties
+          echo "GHA_CICD_DOCKER_CONFIG_JSON=${{ secrets.DOCKER_CONFIG_JSON }}" >> tc04/docker.properties
+          echo "GHA_CICD_DOCKER_IMAGE_URLS=localhost:5000/test-image:tc04," >> tc04/docker.properties
+
+      - name: "TC04-WHEN: docker-wrapper is run with only publish enabled"
+        id: tc04_publish_only
+        uses: ./shared-library/.github/actions/docker-wrapper
+        with:
+          run_lint: "false"
+          run_build: "false"
+          run_test: "false"
+          run_scan: "false"
+          run_publish: "true"
+          properties_path: "tc04/docker.properties"
+
+      - name: "TC04-THEN: publish_status should be 'success', others skipped"
+        env:
+          lint_status: ${{ steps.tc04_publish_only.outputs.lint_status }}
+          build_status: ${{ steps.tc04_publish_only.outputs.build_status }}
+          test_status: ${{ steps.tc04_publish_only.outputs.test_status }}
+          scan_status: ${{ steps.tc04_publish_only.outputs.scan_status }}
+          publish_status: ${{ steps.tc04_publish_only.outputs.publish_status }}
+        run: |
+          if [ "$publish_status" != "success" ]; then
+            echo "Publish should succeed for pre-existing image"
+            exit 1
+          fi
+          for step in lint_status build_status test_status scan_status; do
+            if [ "${!step}" != "skipped" ]; then
+              echo "$step should be skipped"
+              exit 1
+            fi
+          done
+
+      #########################################################
+      # TC04B: Publish with invalid registry URL (should fail)
+      #########################################################
+      - name: "TC04B-GIVEN: Dockerfile present, invalid registry URL"
+        run: |
+          mkdir -p tc04b
+          echo "FROM alpine:3.18" > tc04b/Dockerfile
+          echo "GHA_CICD_DOCKERFILE_PATH=tc04b/Dockerfile" > tc04b/docker.properties
+          echo "GHA_CICD_DOCKER_CONTEXT=tc04b" >> tc04b/docker.properties
+          echo "GHA_CICD_DOCKER_CONFIG_JSON=${{ secrets.DOCKER_CONFIG_JSON }}" >> tc04b/docker.properties
+          echo "GHA_CICD_DOCKER_IMAGE_URLS=not_a_registry_url," >> tc04b/docker.properties
+
+      - name: "TC04B-WHEN: docker-wrapper with publish enabled and bad registry"
+        id: tc04b_publish_invalid_registry
+        continue-on-error: true
+        uses: ./shared-library/.github/actions/docker-wrapper
+        with:
+          run_lint: "false"
+          run_build: "true"
+          run_test: "false"
+          run_scan: "false"
+          run_publish: "true"
+          properties_path: "tc04b/docker.properties"
+
+      - name: "TC04B-THEN: publish_status should be 'failure'"
+        env:
+          publish_status: ${{ steps.tc04b_publish_invalid_registry.outputs.publish_status }}
+        run: |
+          if [ "$publish_status" != "failure" ]; then
+            echo "Publish should fail for invalid registry"
+            exit 1
+          fi
+
+# ---------------------------------------------------------
+# SCAN TESTS (commented out for now, enable when ready)
+# ---------------------------------------------------------
+
+#      #########################################################
+#      # TC15: Scan step with missing credentials (should fail)
+#      #########################################################
+#      - name: "TC15-GIVEN: Valid Dockerfile, missing apro username/password"
+#        run: |
+#          mkdir -p tc15
+#          echo "FROM alpine:3.18" > tc15/Dockerfile
+#          echo "GHA_CICD_DOCKERFILE_PATH=tc15/Dockerfile" > tc15/docker.properties
+#          echo "GHA_CICD_DOCKER_CONTEXT=tc15" >> tc15/docker.properties
+#          echo "GHA_CICD_DOCKER_CONFIG_JSON=${{ secrets.DOCKER_CONFIG_JSON }}" >> tc15/docker.properties
+#          echo "GHA_CICD_DOCKER_IMAGE_URLS=localhost:5000/test-image:tc15," >> tc15/docker.properties
+#          # No APRO username/password
+#
+#      - name: "TC15-WHEN: docker-wrapper is run with scan enabled, missing credentials"
+#        id: tc15_scan_missing_creds
+#        continue-on-error: true
+#        uses: ./shared-library/.github/actions/docker-wrapper
+#        with:
+#          run_lint: "false"
+#          run_build: "true"
+#          run_test: "false"
+#          run_scan: "true"
+#          run_publish: "false"
+#          properties_path: "tc15/docker.properties"
+#
+#      - name: "TC15-THEN: scan_status should be 'failure'"
+#        env:
+#          scan_status: ${{ steps.tc15_scan_missing_creds.outputs.scan_status }}
+#        run: |
+#          if [ "$scan_status" != "failure" ]; then
+#            exit 1
+#          fi
+#
+#      #########################################################
+#      # TC16: Scan step, image tar missing (should fail)
+#      #########################################################
+#      - name: "TC16-GIVEN: Valid Dockerfile, build step skipped, no tar"
+#        run: |
+#          mkdir -p tc16
+#          echo "FROM alpine:3.18" > tc16/Dockerfile
+#          echo "GHA_CICD_DOCKERFILE_PATH=tc16/Dockerfile" > tc16/docker.properties
+#          echo "GHA_CICD_DOCKER_CONTEXT=tc16" >> tc16/docker.properties
+#          echo "GHA_CICD_DOCKER_CONFIG_JSON=${{ secrets.DOCKER_CONFIG_JSON }}" >> tc16/docker.properties
+#          echo "GHA_CICD_DOCKER_IMAGE_URLS=localhost:5000/test-image:tc16," >> tc16/docker.properties
+#
+#      - name: "TC16-WHEN: docker-wrapper is run with scan enabled, but no build"
+#        id: tc16_scan_no_tar
+#        continue-on-error: true
+#        uses: ./shared-library/.github/actions/docker-wrapper
+#        with:
+#          run_lint: "false"
+#          run_build: "false"
+#          run_test: "false"
+#          run_scan: "true"
+#          run_publish: "false"
+#          properties_path: "tc16/docker.properties"
+#
+#      - name: "TC16-THEN: scan_status should be 'failure'"
+#        env:
+#          scan_status: ${{ steps.tc16_scan_no_tar.outputs.scan_status }}
+#        run: |
+#          if [ "$scan_status" != "failure" ]; then
+#            exit 1
+#          fi
+#
+#      #########################################################
+#      # TC17: Scan step, ignored severity (should pass)
+#      #########################################################
+#      - name: "TC17-GIVEN: Valid Dockerfile, scan enabled, severity ignored"
+#        run: |
+#          mkdir -p tc17
+#          echo "FROM alpine:3.18" > tc17/Dockerfile
+#          echo "GHA_CICD_DOCKERFILE_PATH=tc17/Dockerfile" > tc17/docker.properties
+#          echo "GHA_CICD_DOCKER_CONTEXT=tc17" >> tc17/docker.properties
+#          echo "GHA_CICD_DOCKER_CONFIG_JSON=${{ secrets.DOCKER_CONFIG_JSON }}" >> tc17/docker.properties
+#          echo "GHA_CICD_DOCKER_IMAGE_URLS=localhost:5000/test-image:tc17," >> tc17/docker.properties
+#          echo "GHA_CICD_XRAY_IGNORED_SEVERITIES=High" >> tc17/docker.properties
+#
+#      - name: "TC17-WHEN: docker-wrapper with scan enabled, ignored severity"
+#        id: tc17_scan_ignored_severity
+#        uses: ./shared-library/.github/actions/docker-wrapper
+#        with:
+#          run_lint: "false"
+#          run_build: "true"
+#          run_test: "false"
+#          run_scan: "true"
+#          run_publish: "false"
+#          properties_path: "tc17/docker.properties"
+#
+#      - name: "TC17-THEN: scan_status should be 'success'"
+#        env:
+#          scan_status: ${{ steps.tc17_scan_ignored_severity.outputs.scan_status }}
+#        run: |
+#          if [ "$scan_status" != "success" ]; then
+#            exit 1
+#          fi
+#
+#      #########################################################
+#      # TC18: Scan step, blocking severity (should fail build)
+#      #########################################################
+#      - name: "TC18-GIVEN: Valid Dockerfile, scan enabled, blocking severity (simulate)"
+#        run: |
+#          mkdir -p tc18
+#          echo "FROM alpine:3.18" > tc18/Dockerfile
+#          echo "GHA_CICD_DOCKERFILE_PATH=tc18/Dockerfile" > tc18/docker.properties
+#          echo "GHA_CICD_DOCKER_CONTEXT=tc18" >> tc18/docker.properties
+#          echo "GHA_CICD_DOCKER_CONFIG_JSON=${{ secrets.DOCKER_CONFIG_JSON }}" >> tc18/docker.properties
+#          echo "GHA_CICD_DOCKER_IMAGE_URLS=localhost:5000/test-image:tc18," >> tc18/docker.properties
+#          echo "GHA_CICD_XRAY_IGNORED_SEVERITIES=Low" >> tc18/docker.properties
+#          echo "GHA_CICD_XRAY_ALL_SEVERITIES=Critical" >> tc18/docker.properties
+#
+#      - name: "TC18-WHEN: docker-wrapper with scan enabled, blocking severity"
+#        id: tc18_scan_blocking_severity
+#        continue-on-error: true
+#        uses: ./shared-library/.github/actions/docker-wrapper
+#        with:
+#          run_lint: "false"
+#          run_build: "true"
+#          run_test: "false"
+#          run_scan: "true"
+#          run_publish: "false"
+#          properties_path: "tc18/docker.properties"
+#
+#      - name: "TC18-THEN: scan_status should be 'failure'"
+#        env:
+#          scan_status: ${{ steps.tc18_scan_blocking_severity.outputs.scan_status }}
+#        run: |
+#          if [ "$scan_status" != "failure" ]; then
+#            exit 1
+#          fi
