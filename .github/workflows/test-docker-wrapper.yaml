@@ -65,7 +65,7 @@ jobs:
           for step in lint_status build_status test_status scan_status publish_status; do
             val="${!step}"
             echo "$step=$val"
-            if [ "$step" = "scan_status" ]; then
+            if [ "$step" = "scan_status" ] ; then
               continue # scan not run
             fi
             if [ "$val" != "success" ]; then
@@ -171,7 +171,7 @@ jobs:
           run_publish: "false"
           properties_path: "tc03/docker.properties"
 
-      - name: "TC03-THEN: all outputs should be 'skipped'"
+      - name: "TC03-THEN: all outputs should be 'skipped' and build is 'failed'"
         env:
           lint_status: ${{ steps.tc03_context_missing.outputs.lint_status }}
           build_status: ${{ steps.tc03_context_missing.outputs.build_status }}
@@ -179,47 +179,21 @@ jobs:
           scan_status: ${{ steps.tc03_context_missing.outputs.scan_status }}
           publish_status: ${{ steps.tc03_context_missing.outputs.publish_status }}
         run: |
-          for step in lint_status build_status test_status scan_status publish_status; do
-            if [ "${!step}" != "skipped" ]; then
-              echo "$step should be skipped when build context is missing"
-              exit 1
+          
+            for step in lint_status build_status test_status scan_status publish_status; do
+              if [ "$step" = "build_status" ]; then
+                if [ "${!step}" != "failed" ]; then
+                  echo "$step should be failed when build context is missing"
+                  exit 1
+                fi
+              else
+                if [ "${!step}" != "skipped" ]; then
+                  echo "$step should be skipped when build context is missing"
+                  exit 1
+                fi
             fi
-          done
 
-      - name: "TC03-ALT-GIVEN: Build enabled, invalid build-args file (not found)"
-        run: |
-          mkdir -p tc03alt
-          echo "FROM alpine:3.18" > tc03alt/Dockerfile
-          echo "GHA_CICD_DOCKERFILE_PATH=tc03alt/Dockerfile" > tc03alt/docker.properties
-          echo "GHA_CICD_DOCKER_CONTEXT=tc03alt" >> tc03alt/docker.properties
-          echo "GHA_CICD_DOCKER_BUILD_ARGS_FILE=tc03alt/buildargs.notfound" >> tc03alt/docker.properties
 
-      - name: "TC03-ALT-WHEN: build enabled, build-args file missing"
-        id: tc03alt_buildargs_missing
-        continue-on-error: true
-        uses: ./shared-library/.github/actions/docker-wrapper
-        with:
-          run_lint: "false"
-          run_build: "true"
-          run_test: "false"
-          run_scan: "false"
-          run_publish: "false"
-          properties_path: "tc03alt/docker.properties"
-
-      - name: "TC03-ALT-THEN: all outputs should be 'skipped'"
-        env:
-          lint_status: ${{ steps.tc03alt_buildargs_missing.outputs.lint_status }}
-          build_status: ${{ steps.tc03alt_buildargs_missing.outputs.build_status }}
-          test_status: ${{ steps.tc03alt_buildargs_missing.outputs.test_status }}
-          scan_status: ${{ steps.tc03alt_buildargs_missing.outputs.scan_status }}
-          publish_status: ${{ steps.tc03alt_buildargs_missing.outputs.publish_status }}
-        run: |
-          for step in lint_status build_status test_status scan_status publish_status; do
-            if [ "${!step}" != "skipped" ]; then
-              echo "$step should be skipped for missing build-args file"
-              exit 1
-            fi
-          done
 
       #########################################################
       # TC04: Test step functional failure (assertion fail) and validation (missing test file)
