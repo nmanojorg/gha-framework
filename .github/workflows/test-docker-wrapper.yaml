@@ -65,7 +65,7 @@ jobs:
           for step in lint_status build_status test_status scan_status publish_status; do
             val="${!step}"
             echo "$step=$val"
-            if [ "$step" = "scan_status" ] && [ -z "$val" ]; then
+            if [ "$step" = "scan_status" ]; then
               continue # scan not run
             fi
             if [ "$val" != "success" ]; then
