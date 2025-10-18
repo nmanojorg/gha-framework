@@ -179,7 +179,6 @@ jobs:
           scan_status: ${{ steps.tc03_context_missing.outputs.scan_status }}
           publish_status: ${{ steps.tc03_context_missing.outputs.publish_status }}
         run: |
-          
             for step in lint_status build_status test_status scan_status publish_status; do
               if [ "$step" = "build_status" ]; then
                 if [ "${!step}" != "failed" ]; then
