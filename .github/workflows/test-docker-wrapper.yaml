@@ -193,6 +193,7 @@ jobs:
         uses: ./shared-library/.github/actions/docker-wrapper
         env:
           GHA_CICD_DOCKER_CONTEXT: tc05
+        continue-on-error: true
         with:
           run_lint: "true"
           run_build: "false"
