@@ -33,15 +33,21 @@ jobs:
       # TC01: End-to-end happy path: all steps enabled, valid inputs
       #########################################################
       - name: "TC01-GIVEN: Valid Dockerfile, context and all required files"
+        env:
+            GHA_CICD_DOCKERFILE_PATH: tc01/Dockerfile
+            GHA_CICD_DOCKER_CONTEXT: tc01
+            GHA_CICD_DOCKER_CONFIG_JSON: "${{ secrets.DOCKER_CONFIG_JSON }}"
+            GHA_CICD_DGOSS_TEST_FILE: tc01/goss.yaml
+            GHA_CICD_DOCKERFILE_LINT_SKIP_CHECKS: "ConsistentInstructionCasing,StageNameCasing"
+            GHA_CICD_DOCKER_BUILD_ARGS: "INPUT1=envInput1 INPUT2=envInput2"
+            GHA_CICD_DOCKER_BUILD_ARGS_FILE: tc01/build-args.txt
         run: |
-          mkdir -p tc01
-          echo "FROM alpine:3.18" > tc01/Dockerfile
-          echo -e "file:\n  /bin/sh:\n    exists: true" > tc01/goss.yaml
-          echo "GHA_CICD_DOCKERFILE_PATH=tc01/Dockerfile" > tc01/docker.properties
-          echo "GHA_CICD_DOCKER_CONTEXT=tc01" >> tc01/docker.properties
-          echo "GHA_CICD_DOCKER_CONFIG_JSON=${{ secrets.DOCKER_CONFIG_JSON }}" >> tc01/docker.properties
-          echo "GHA_CICD_DGOSS_TEST_FILE=tc01/goss.yaml" >> tc01/docker.properties
-          echo "GHA_CICD_DOCKER_IMAGE_URLS=localhost:5000/test-image:tc01," >> tc01/docker.properties
+        
+              mkdir -p tc01
+              echo -e "FROM alpine:3.18\nARG INPUT1\nARG INPUT2\nCMD echo \"Input 1: \$INPUT1, Input 2: \$INPUT2\" " > tc01/Dockerfile
+              echo -e "file:\n  /bin/sh:\n    exists: true" > tc01/goss.yaml
+              echo -e "INPUT1=fileInput1\nINPUT2=fileInput2" > tc01/build-args.txt
+              echo "GHA_CICD_DOCKER_IMAGE_URLS=localhost:5000/test-image:tc01," >> tc01/docker.properties
 
       - name: "TC01-WHEN: docker-wrapper is run with all steps enabled"
         id: tc01_all_enabled
