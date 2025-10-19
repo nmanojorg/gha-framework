@@ -171,7 +171,7 @@ jobs:
           run_publish: "false"
           properties_path: "tc03/docker.properties"
 
-      - name: "TC03-THEN: all outputs should be 'skipped' and build is 'failed'"
+      - name: "TC03-THEN: build_status should be 'failure', others skipped"
         env:
           lint_status: ${{ steps.tc03_context_missing.outputs.lint_status }}
           build_status: ${{ steps.tc03_context_missing.outputs.build_status }}
@@ -179,19 +179,17 @@ jobs:
           scan_status: ${{ steps.tc03_context_missing.outputs.scan_status }}
           publish_status: ${{ steps.tc03_context_missing.outputs.publish_status }}
         run: |
-            for step in lint_status build_status test_status scan_status publish_status; do
-              if [ "$step" = "build_status" ]; then
-                if [ "${!step}" != "failed" ]; then
-                  echo "$step should be failed when build context is missing"
-                  exit 1
-                fi
-              else
-                if [ "${!step}" != "skipped" ]; then
-                  echo "$step should be skipped when build context is missing"
-                  exit 1
-                fi
+          if [ "$build_status" != "failure" ]; then
+            echo "build_status should be failure when context is missing, got: $build_status"
+            exit 1
+          fi
+          for step in lint_status test_status scan_status publish_status; do
+            val="${!step}"
+            if [ "$val" != "skipped" ]; then
+              echo "$step should be skipped when context is missing, got: $val"
+              exit 1
             fi
-
+          done
 
 
       #########################################################
