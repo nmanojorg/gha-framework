@@ -57,7 +57,7 @@ jobs:
             GHA_CICD_DOCKER_CONTEXT: tc01
             GHA_CICD_DOCKER_CONFIG_JSON: "${{ secrets.DOCKER_CONFIG_JSON }}"
             GHA_CICD_DGOSS_TEST_FILE: tc01/goss.yaml
-            GHA_CICD_DOCKERFILE_LINT_SKIP_CHECKS: "ConsistentInstructionCasing,StageNameCasing"
+            GHA_CICD_DOCKERFILE_LINT_SKIP_CHECKS: "ConsistentInstructionCasing,StageNameCasing,JSONArgsRecommended "
             GHA_CICD_DOCKER_BUILD_ARGS: "INPUT1=envInput1 INPUT2=envInput2"
             GHA_CICD_DOCKER_BUILD_ARGS_FILE: tc01/build-args.txt        
         with:
