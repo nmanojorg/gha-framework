@@ -52,6 +52,14 @@ jobs:
       - name: "TC01-WHEN: docker-wrapper is run with all steps enabled"
         id: tc01_all_enabled
         uses: ./shared-library/.github/actions/docker-wrapper
+        env:
+            GHA_CICD_DOCKERFILE_PATH: tc01/Dockerfile
+            GHA_CICD_DOCKER_CONTEXT: tc01
+            GHA_CICD_DOCKER_CONFIG_JSON: "${{ secrets.DOCKER_CONFIG_JSON }}"
+            GHA_CICD_DGOSS_TEST_FILE: tc01/goss.yaml
+            GHA_CICD_DOCKERFILE_LINT_SKIP_CHECKS: "ConsistentInstructionCasing,StageNameCasing"
+            GHA_CICD_DOCKER_BUILD_ARGS: "INPUT1=envInput1 INPUT2=envInput2"
+            GHA_CICD_DOCKER_BUILD_ARGS_FILE: tc01/build-args.txt        
         with:
           run_lint: "true"
           run_build: "true"
