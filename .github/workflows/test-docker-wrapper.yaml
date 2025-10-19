@@ -358,137 +358,73 @@ jobs:
             fi
           done
 
-# -----------------------------------------------------------------
-# XRAY SCAN STEP: Testcases (TC09–TC12, commented out; enable when ready)
-# -----------------------------------------------------------------
+      ########################################################################
+      # TC09: Scan step with missing credentials (should fail)
+      ########################################################################
+      - name: "TC09-GIVEN: Valid Dockerfile, missing apro username/password"
+        run: |
+          mkdir -p tc09
+          echo "FROM alpine:3.18" > tc09/Dockerfile
+          echo "GHA_CICD_DOCKERFILE_PATH=tc09/Dockerfile" > tc09/docker.properties
+          echo "GHA_CICD_DOCKER_CONTEXT=tc09" >> tc09/docker.properties
+          echo "GHA_CICD_DOCKER_CONFIG_JSON=${{ secrets.DOCKER_CONFIG_JSON }}" >> tc09/docker.properties
+          echo "GHA_CICD_DOCKER_IMAGE_URLS=localhost:5000/test-image:tc09," >> tc09/docker.properties
+          # No APRO username/password
 
-#      ########################################################################
-#      # TC09: Scan step with missing credentials (should fail)
-#      ########################################################################
-#      - name: "TC09-GIVEN: Valid Dockerfile, missing apro username/password"
-#        run: |
-#          mkdir -p tc09
-#          echo "FROM alpine:3.18" > tc09/Dockerfile
-#          echo "GHA_CICD_DOCKERFILE_PATH=tc09/Dockerfile" > tc09/docker.properties
-#          echo "GHA_CICD_DOCKER_CONTEXT=tc09" >> tc09/docker.properties
-#          echo "GHA_CICD_DOCKER_CONFIG_JSON=${{ secrets.DOCKER_CONFIG_JSON }}" >> tc09/docker.properties
-#          echo "GHA_CICD_DOCKER_IMAGE_URLS=localhost:5000/test-image:tc09," >> tc09/docker.properties
-#          # No APRO username/password
-#
-#      - name: "TC09-WHEN: Run docker-wrapper with scan enabled, missing credentials"
-#        id: tc09_scan_missing_creds
-#        continue-on-error: true
-#        uses: ./shared-library/.github/actions/docker-wrapper
-#        with:
-#          run_lint: "false"
-#          run_build: "true"
-#          run_test: "false"
-#          run_scan: "true"
-#          run_publish: "false"
-#          properties_path: "tc09/docker.properties"
-#
-#      - name: "TC09-THEN: scan_status should be 'failure'"
-#        env:
-#          scan_status: ${{ steps.tc09_scan_missing_creds.outputs.scan_status }}
-#        run: |
-#          if [ "$scan_status" != "failure" ]; then
-#            exit 1
-#          fi
-#
-#      ########################################################################
-#      # TC10: Scan step, image tar missing (should fail)
-#      ########################################################################
-#      - name: "TC10-GIVEN: Valid Dockerfile, build step skipped, no tar"
-#        run: |
-#          mkdir -p tc10
-#          echo "FROM alpine:3.18" > tc10/Dockerfile
-#          echo "GHA_CICD_DOCKERFILE_PATH=tc10/Dockerfile" > tc10/docker.properties
-#          echo "GHA_CICD_DOCKER_CONTEXT=tc10" >> tc10/docker.properties
-#          echo "GHA_CICD_DOCKER_CONFIG_JSON=${{ secrets.DOCKER_CONFIG_JSON }}" >> tc10/docker.properties
-#          echo "GHA_CICD_DOCKER_IMAGE_URLS=localhost:5000/test-image:tc10," >> tc10/docker.properties
-#
-#      - name: "TC10-WHEN: Run docker-wrapper with scan enabled, but no build"
-#        id: tc10_scan_no_tar
-#        continue-on-error: true
-#        uses: ./shared-library/.github/actions/docker-wrapper
-#        with:
-#          run_lint: "false"
-#          run_build: "false"
-#          run_test: "false"
-#          run_scan: "true"
-#          run_publish: "false"
-#          properties_path: "tc10/docker.properties"
-#
-#      - name: "TC10-THEN: scan_status should be 'failure'"
-#        env:
-#          scan_status: ${{ steps.tc10_scan_no_tar.outputs.scan_status }}
-#        run: |
-#          if [ "$scan_status" != "failure" ]; then
-#            exit 1
-#          fi
-#
-#      ########################################################################
-#      # TC11: Scan step, ignored severity (should pass)
-#      ########################################################################
-#      - name: "TC11-GIVEN: Valid Dockerfile, scan enabled, severity ignored"
-#        run: |
-#          mkdir -p tc11
-#          echo "FROM alpine:3.18" > tc11/Dockerfile
-#          echo "GHA_CICD_DOCKERFILE_PATH=tc11/Dockerfile" > tc11/docker.properties
-#          echo "GHA_CICD_DOCKER_CONTEXT=tc11" >> tc11/docker.properties
-#          echo "GHA_CICD_DOCKER_CONFIG_JSON=${{ secrets.DOCKER_CONFIG_JSON }}" >> tc11/docker.properties
-#          echo "GHA_CICD_DOCKER_IMAGE_URLS=localhost:5000/test-image:tc11," >> tc11/docker.properties
-#          echo "GHA_CICD_XRAY_IGNORED_SEVERITIES=High" >> tc11/docker.properties
-#
-#      - name: "TC11-WHEN: Run docker-wrapper with scan enabled, ignored severity"
-#        id: tc11_scan_ignored_severity
-#        uses: ./shared-library/.github/actions/docker-wrapper
-#        with:
-#          run_lint: "false"
-#          run_build: "true"
-#          run_test: "false"
-#          run_scan: "true"
-#          run_publish: "false"
-#          properties_path: "tc11/docker.properties"
-#
-#      - name: "TC11-THEN: scan_status should be 'success'"
-#        env:
-#          scan_status: ${{ steps.tc11_scan_ignored_severity.outputs.scan_status }}
-#        run: |
-#          if [ "$scan_status" != "success" ]; then
-#            exit 1
-#          fi
-#
-#      ########################################################################
-#      # TC12: Scan step, blocking severity (should fail build)
-#      ########################################################################
-#      - name: "TC12-GIVEN: Valid Dockerfile, scan enabled, blocking severity (simulate)"
-#        run: |
-#          mkdir -p tc12
-#          echo "FROM alpine:3.18" > tc12/Dockerfile
-#          echo "GHA_CICD_DOCKERFILE_PATH=tc12/Dockerfile" > tc12/docker.properties
-#          echo "GHA_CICD_DOCKER_CONTEXT=tc12" >> tc12/docker.properties
-#          echo "GHA_CICD_DOCKER_CONFIG_JSON=${{ secrets.DOCKER_CONFIG_JSON }}" >> tc12/docker.properties
-#          echo "GHA_CICD_DOCKER_IMAGE_URLS=localhost:5000/test-image:tc12," >> tc12/docker.properties
-#          echo "GHA_CICD_XRAY_IGNORED_SEVERITIES=Low" >> tc12/docker.properties
-#          echo "GHA_CICD_XRAY_ALL_SEVERITIES=Critical" >> tc12/docker.properties
-#
-#      - name: "TC12-WHEN: Run docker-wrapper with scan enabled, blocking severity"
-#        id: tc12_scan_blocking_severity
-#        continue-on-error: true
-#        uses: ./shared-library/.github/actions/docker-wrapper
-#        with:
-#          run_lint: "false"
-#          run_build: "true"
-#          run_test: "false"
-#          run_scan: "true"
-#          run_publish: "false"
-#          properties_path: "tc12/docker.properties"
-#
-#      - name: "TC12-THEN: scan_status should be 'failure'"
-#        env:
-#          scan_status: ${{ steps.tc12_scan_blocking_severity.outputs.scan_status }}
-#        run: |
-#          if [ "$scan_status" != "failure" ]; then
-#            exit 1
-#          fi
+      - name: "TC09-WHEN: Run docker-wrapper with scan enabled, missing credentials"
+        id: tc09_scan_missing_creds
+        continue-on-error: true
+        uses: ./shared-library/.github/actions/docker-wrapper
+        with:
+          run_lint: "false"
+          run_build: "true"
+          run_test: "false"
+          run_scan: "true"
+          run_publish: "false"
+          properties_path: "tc09/docker.properties"
+
+      - name: "TC09-THEN: scan_status should be 'failure'"
+        env:
+          scan_status: ${{ steps.tc09_scan_missing_creds.outputs.scan_status }}
+        run: |
+          if [ "$scan_status" != "failure" ]; then
+            exit 1
+          fi
+
+      ########################################################################
+      # TC10: Build is skipped, so scan and test are skipped
+      ########################################################################
+      - name: "TC10-GIVEN: Valid Dockerfile, build step skipped"
+        run: |
+          mkdir -p tc10
+          echo "FROM alpine:3.18" > tc10/Dockerfile
+          echo "GHA_CICD_DOCKERFILE_PATH=tc10/Dockerfile" > tc10/docker.properties
+          echo "GHA_CICD_DOCKER_CONTEXT=tc10" >> tc10/docker.properties
+          echo "GHA_CICD_DOCKER_CONFIG_JSON=${{ secrets.DOCKER_CONFIG_JSON }}" >> tc10/docker.properties
+          echo "GHA_CICD_DOCKER_IMAGE_URLS=localhost:5000/test-image:tc10," >> tc10/docker.properties
+
+      - name: "TC10-WHEN: Run docker-wrapper with scan and test enabled, but build disabled"
+        id: tc10_scan_no_build
+        uses: ./shared-library/.github/actions/docker-wrapper
+        with:
+          run_lint: "false"
+          run_build: "false"
+          run_test: "true"
+          run_scan: "true"
+          run_publish: "false"
+          properties_path: "tc10/docker.properties"
+
+      - name: "TC10-THEN: build_status, scan_status, test_status should all be 'skipped'"
+        env:
+          build_status: ${{ steps.tc10_scan_no_build.outputs.build_status }}
+          scan_status: ${{ steps.tc10_scan_no_build.outputs.scan_status }}
+          test_status: ${{ steps.tc10_scan_no_build.outputs.test_status }}
+        run: |
+          for step in build_status scan_status test_status; do
+            val="${!step}"
+            if [ "$val" != "skipped" ]; then
+              echo "Expected $step to be 'skipped' when build is not run."
+              exit 1
+            fi
+          done
+
