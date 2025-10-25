@@ -1,0 +1,137 @@
+name: "Lint (Maven Java)"
+description: "Performs lint checks for Maven Java projects using SpotBugs and optional custom lint, with configurable artifact uploads via environment variables. Adds SpotBugs results as a PR comment if run on a pull request, and uploads a SARIF report for GitHub code scanning."
+
+runs:
+  using: "composite"
+  steps:
+    # --- Pre Step ---
+    - name: Pre Step (Maven Lint)
+      shell: bash
+      run: |
+        echo "[PRE] Preparing for Maven lint checks..."
+
+    # --- Input Validation ---
+    - name: Validate Inputs and Environment
+      uses: ./cicd-shared-lib/.github/actions/utils/validate-inputs
+      with:
+        actionInputs: |
+          GHA_CICD_MAVEN_CUSTOM_LINT_CMD: "${{ env.GHA_CICD_MAVEN_CUSTOM_LINT_CMD }}"
+          GHA_CICD_MAVEN_CUSTOM_LINT_OPTS: "${{ env.GHA_CICD_MAVEN_CUSTOM_LINT_OPTS }}"
+          GHA_CICD_MAVEN_CUSTOM_LINT_ARTIFACT_PATH: "${{ env.GHA_CICD_MAVEN_CUSTOM_LINT_ARTIFACT_PATH }}"
+          GHA_CICD_MAVEN_SPOTBUGS_EXCLUDE_FILE: "${{ env.GHA_CICD_MAVEN_SPOTBUGS_EXCLUDE_FILE }}"
+          GHA_CICD_MAVEN_SPOTBUGS_REPORT_PATH: "${{ env.GHA_CICD_MAVEN_SPOTBUGS_REPORT_PATH }}"
+          GHA_CICD_MAVEN_SPOTBUGS_ADDITIONAL_OPTS: "${{ env.GHA_CICD_MAVEN_SPOTBUGS_ADDITIONAL_OPTS }}"
+        optionalInputs: |
+          - GHA_CICD_MAVEN_CUSTOM_LINT_CMD
+          - GHA_CICD_MAVEN_CUSTOM_LINT_OPTS
+          - GHA_CICD_MAVEN_SPOTBUGS_EXCLUDE_FILE
+          - GHA_CICD_MAVEN_SPOTBUGS_REPORT_PATH
+          - GHA_CICD_MAVEN_CUSTOM_LINT_ARTIFACT_PATH
+          - GHA_CICD_MAVEN_SPOTBUGS_ADDITIONAL_OPTS
+        typeValidations: |
+          string:
+            - GHA_CICD_MAVEN_CUSTOM_LINT_CMD
+            - GHA_CICD_MAVEN_CUSTOM_LINT_OPTS
+            - GHA_CICD_MAVEN_SPOTBUGS_EXCLUDE_FILE
+            - GHA_CICD_MAVEN_SPOTBUGS_REPORT_PATH
+            - GHA_CICD_MAVEN_CUSTOM_LINT_ARTIFACT_PATH
+            - GHA_CICD_MAVEN_SPOTBUGS_ADDITIONAL_OPTS
+        filesPathInputs: |
+          - GHA_CICD_MAVEN_SPOTBUGS_EXCLUDE_FILE
+
+    # --- SpotBugs Installation ---
+    - name: Install SpotBugs
+      shell: bash
+      run: |
+        echo "::group::Install SpotBugs"
+        mkdir -p "$HOME/bin"
+        curl -fsSL "$GHA_CICD_LOCAL_SPOTBUGS_URL" -o "$HOME/spotbugs.zip"
+        unzip -q "$HOME/spotbugs.zip" -d "$HOME"
+        rm "$HOME/spotbugs.zip"
+        SPOTBUGS_BIN="$(ls -d "$HOME"/spotbugs-*/bin | head -n1)"
+        echo "$SPOTBUGS_BIN" >> $GITHUB_PATH
+        echo "SpotBugs installed to $SPOTBUGS_BIN"
+        echo "::endgroup::"
+
+    # --- SpotBugs Lint ---
+    - name: SpotBugs Lint (Maven)
+      id: spotbugs_lint
+      shell: bash
+      run: |
+        echo "::group::SpotBugs Lint"
+        set -euo pipefail
+        shopt -s globstar
+        REPORT_PATH="${GHA_CICD_MAVEN_SPOTBUGS_REPORT_PATH}"
+        mkdir -p "$(dirname "$REPORT_PATH")"
+        spotbugs_args=(
+          -output "$REPORT_PATH"
+          -sarif
+          -exitcode
+          -progress
+          -textui
+        )
+        if [[ -n "${GHA_CICD_MAVEN_SPOTBUGS_EXCLUDE_FILE:-}" ]]; then
+          echo "[INFO] Using SpotBugs exclude bugs file: ${GHA_CICD_MAVEN_SPOTBUGS_EXCLUDE_FILE}"
+          spotbugs_args+=(-excludeBugs "${GHA_CICD_MAVEN_SPOTBUGS_EXCLUDE_FILE}")
+        fi
+        if [[ -n "${GHA_CICD_MAVEN_SPOTBUGS_ADDITIONAL_OPTS:-}" ]]; then
+          spotbugs_args+=(${GHA_CICD_MAVEN_SPOTBUGS_ADDITIONAL_OPTS})
+        fi
+        mvn clean compile
+        spotbugs "${spotbugs_args[@]}" **/target/classes
+        echo "::endgroup::"
+
+    # --- Upload SARIF to GitHub (Code Scanning) ---
+    - name: Upload SARIF to GitHub
+      if: ${{ !cancelled() && github.event.pull_request.number != '' }}
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: ${{ env.GHA_CICD_MAVEN_SPOTBUGS_REPORT_PATH }}
+
+    # --- SpotBugs PR Comment ---
+    - name: Comment SpotBugs Report on PR
+      if: ${{ !cancelled() && github.event.pull_request.number != '' }}
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+      run: |
+         echo "::group::SpotBugs PR Comment"
+         python3 -m pip install requests
+         python3 ./cicd-shared-lib/.github/actions/utils/post_pr_comments.py --repo "$GITHUB_REPOSITORY" --pr "$PR_NUMBER" --title "SpotBugs Report" --token "$GITHUB_TOKEN" --report "$GHA_CICD_MAVEN_SPOTBUGS_REPORT_PATH"
+         echo "::endgroup::"
+
+    # --- SpotBugs Artifact Upload ---
+    - name: Upload SpotBugs Report
+      if: ${{ !cancelled() }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: spotbugs-report
+        path: ${{ env.GHA_CICD_MAVEN_SPOTBUGS_REPORT_PATH }}
+
+    # --- Optional Custom Lint ---
+    - name: Custom Lint (Maven)
+      if: ${{ env.GHA_CICD_MAVEN_CUSTOM_LINT_CMD != '' }}
+      shell: bash
+      run: |
+        echo "::group::Custom Lint"
+        ./cicd-shared-lib/.github/actions/maven-wrapper/utils/maven-invoke.sh \
+          "${GHA_CICD_MAVEN_CUSTOM_LINT_CMD}" \
+          "${GHA_CICD_MAVEN_CUSTOM_LINT_OPTS}"
+        echo "::endgroup::"
+
+    # --- Custom Lint Artifact Upload ---
+    - name: Upload Custom Lint Artifact
+      if: ${{ !cancelled() && env.GHA_CICD_MAVEN_CUSTOM_LINT_ARTIFACT_PATH != '' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: custom-lint-artifact
+        path: ${{ env.GHA_CICD_MAVEN_CUSTOM_LINT_ARTIFACT_PATH }}
+
+    # --- Post Step ---
+    - name: Post Step (Maven Lint)
+      if: ${{ !cancelled() }}
+      shell: bash
+      run: |
+        echo "[POST] Maven lint checks completed."

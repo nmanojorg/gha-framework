@@ -1,0 +1,127 @@
+name: "Maven Wrapper"
+description: "Reusable Maven CI/CD wrapper"
+inputs:
+  run_lint:
+    description: "Enable lint step"
+    required: false
+    default: "false"
+  run_build:
+    description: "Enable build step"
+    required: false
+    default: "false"
+  run_test:
+    description: "Enable test step"
+    required: false
+    default: "false"
+  run_publish:
+    description: "Enable publish step"
+    required: false
+    default: "false"
+  properties_path:
+    description: "Path to project-specific properties file"
+    required: false
+
+outputs:
+  lint_status:
+    description: "Result of lint step"
+    value: ${{ steps.lint.outcome }}
+  build_status:
+    description: "Result of build step"
+    value: ${{ steps.build.outcome }}
+  test_status:
+    description: "Result of test step"
+    value: ${{ steps.test.outcome }}
+  publish_status:
+    description: "Result of publish step"
+    value: ${{ steps.publish.outcome }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Export Shared FG PAT token runner env variable to GitHub Actions env
+      shell: bash
+      run: |
+        if [ -n "$GHA_SHAREDLIB_FG_TOKEN" ]; then
+          echo "GHA_SHAREDLIB_FG_TOKEN=$GHA_SHAREDLIB_FG_TOKEN" >> $GITHUB_ENV
+        fi
+
+    - name: Checkout CICD Shared Repository - MW
+      id: mw_checkout_shared_lib
+      if: env.CICD_SHARED_LIB_EXISTS != 'true'
+      uses: actions/checkout@v4
+      with:
+        repository: "${{ env.action_repository }}"
+        ref: "${{ env.action_ref }}"
+        token: "${{ env.GHA_SHAREDLIB_FG_TOKEN }}"
+        path: 'cicd-shared-lib'
+      env:
+        action_ref: "${{ github.action_ref }}"
+        action_repository: "${{ github.action_repository }}"
+
+    - name: Set CICD_SHARED_LIB_EXISTS variable if checkout was successful
+      if: steps.mw_checkout_shared_lib.outcome == 'success'
+      shell: bash
+      run: echo "CICD_SHARED_LIB_EXISTS=true" >> $GITHUB_ENV
+
+    - name: Import Common Properties
+      uses: ./cicd-shared-lib/.github/actions/utils/import-properties
+      with:
+        files: ./cicd-shared-lib/.github/actions/utils/properties/common.properties
+
+    - name: Import Maven Properties
+      uses: ./cicd-shared-lib/.github/actions/utils/import-properties
+      with:
+        files: ./cicd-shared-lib/.github/actions/maven-wrapper/properties/maven.properties
+
+    - name: Import Project Maven Properties (if provided)
+      if: ${{ inputs.properties_path != '' }}
+      uses: ./cicd-shared-lib/.github/actions/utils/import-properties
+      with:
+        files: ${{ inputs.properties_path }}
+
+    - name: Validate Inputs and Environment
+      uses: ./cicd-shared-lib/.github/actions/utils/validate-inputs
+      with:
+        actionInputs: |
+          run_lint: "${{ inputs.run_lint }}"
+          run_build: "${{ inputs.run_build }}"
+          run_test: "${{ inputs.run_test }}"
+          run_publish: "${{ inputs.run_publish }}"
+        requiredInputs: |
+          - run_lint
+          - run_build
+          - run_test
+          - run_publish
+        typeValidations: |
+          booleanString:
+            - run_lint
+            - run_build
+            - run_test
+            - run_publish
+
+    - name: Setup Java - Maven (if requested)
+      if: ${{ env.GHA_CICD_MAVEN_JAVA_VERSION != '' }}
+      uses: actions/setup-java@v5
+      with:
+        java-version: ${{ env.GHA_CICD_MAVEN_JAVA_VERSION }}
+        distribution: ${{ env.GHA_CICD_MAVEN_JAVA_DISTRIBUTION }}
+
+    - name: Lint (Maven)
+      id: lint
+      if: ${{ inputs.run_lint == 'true' }}
+      uses: ./cicd-shared-lib/.github/actions/lint/maven-java
+
+    - name: Build (Maven)
+      id: build
+      if: ${{ inputs.run_build == 'true' }}
+      uses: ./cicd-shared-lib/.github/actions/build/maven-java
+
+    - name: Test (Maven)
+      id: test
+      if: ${{ inputs.run_build == 'true' && inputs.run_test == 'true' }}
+      uses: ./cicd-shared-lib/.github/actions/test/maven-java
+
+    - name: Publish (Maven)
+      id: publish
+      if: ${{ inputs.run_publish == 'true' }}
+      uses: ./cicd-shared-lib/.github/actions/publish/maven-java
