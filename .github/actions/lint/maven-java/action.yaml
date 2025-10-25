@@ -9,6 +9,7 @@ runs:
       shell: bash
       run: |
         echo "[PRE] Preparing for Maven lint checks..."
+        printenv
 
     # --- Input Validation ---
     - name: Validate Inputs and Environment
