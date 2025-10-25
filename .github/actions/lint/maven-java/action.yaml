@@ -16,6 +16,7 @@ runs:
       uses: ./cicd-shared-lib/.github/actions/utils/validate-inputs
       with:
         actionInputs: |
+          GHA_CICD_MAVEN_OPTS: "${{ env.GHA_CICD_MAVEN_OPTS }}"
           GHA_CICD_MAVEN_CUSTOM_LINT_CMD: "${{ env.GHA_CICD_MAVEN_CUSTOM_LINT_CMD }}"
           GHA_CICD_MAVEN_CUSTOM_LINT_OPTS: "${{ env.GHA_CICD_MAVEN_CUSTOM_LINT_OPTS }}"
           GHA_CICD_MAVEN_CUSTOM_LINT_ARTIFACT_PATH: "${{ env.GHA_CICD_MAVEN_CUSTOM_LINT_ARTIFACT_PATH }}"
@@ -23,6 +24,7 @@ runs:
           GHA_CICD_MAVEN_SPOTBUGS_REPORT_PATH: "${{ env.GHA_CICD_MAVEN_SPOTBUGS_REPORT_PATH }}"
           GHA_CICD_MAVEN_SPOTBUGS_ADDITIONAL_OPTS: "${{ env.GHA_CICD_MAVEN_SPOTBUGS_ADDITIONAL_OPTS }}"
         optionalInputs: |
+          - GHA_CICD_MAVEN_OPTS
           - GHA_CICD_MAVEN_CUSTOM_LINT_CMD
           - GHA_CICD_MAVEN_CUSTOM_LINT_OPTS
           - GHA_CICD_MAVEN_SPOTBUGS_EXCLUDE_FILE
@@ -31,6 +33,7 @@ runs:
           - GHA_CICD_MAVEN_SPOTBUGS_ADDITIONAL_OPTS
         typeValidations: |
           string:
+            - GHA_CICD_MAVEN_OPTS
             - GHA_CICD_MAVEN_CUSTOM_LINT_CMD
             - GHA_CICD_MAVEN_CUSTOM_LINT_OPTS
             - GHA_CICD_MAVEN_SPOTBUGS_EXCLUDE_FILE
@@ -68,7 +71,7 @@ runs:
         mkdir -p "$(dirname "$REPORT_PATH")"
         spotbugs_args=(
           -output "$REPORT_PATH"
-           -emacs
+          -emacs
           -exitcode
           -progress
           -textui
@@ -95,7 +98,7 @@ runs:
         GITHUB_REPOSITORY: ${{ github.repository }}
         PR_NUMBER: ${{ github.event.pull_request.number }}
       run: |
-         echo "::group::SpotBugs PR Comment"
+         echo "::group::Add SpotBugs report to PR Comment"
          python3 -m pip install requests
          python3 ./cicd-shared-lib/.github/actions/utils/post_pr_comments.py --repo "$GITHUB_REPOSITORY" --pr "$PR_NUMBER" --title "SpotBugs Report" --token "$GITHUB_TOKEN" --report "$GHA_CICD_MAVEN_SPOTBUGS_REPORT_PATH"
          echo "::endgroup::"
@@ -107,6 +110,7 @@ runs:
       with:
         name: spotbugs-report
         path: ${{ env.GHA_CICD_MAVEN_SPOTBUGS_REPORT_PATH }}
+        overwrite: true
 
     # --- Optional Custom Lint ---
     - name: Custom Lint (Maven)
@@ -126,6 +130,7 @@ runs:
       with:
         name: custom-lint-artifact
         path: ${{ env.GHA_CICD_MAVEN_CUSTOM_LINT_ARTIFACT_PATH }}
+        overwrite: true
 
     # --- Post Step ---
     - name: Post Step (Maven Lint)
