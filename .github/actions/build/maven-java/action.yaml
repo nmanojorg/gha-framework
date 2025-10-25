@@ -1,0 +1,54 @@
+name: "Build (Maven Java)"
+description: "Builds Maven Java projects, supporting multi-module and custom project layouts, with extensible artifact upload and robust environment variable configuration."
+
+runs:
+  using: "composite"
+  steps:
+    # --- Pre Step ---
+    - name: Pre Step (Maven Build)
+      shell: bash
+      run: |
+        echo "[PRE] Preparing for Maven build..."
+        printenv
+
+    # --- Input Validation ---
+    - name: Validate Inputs and Environment
+      uses: ./cicd-shared-lib/.github/actions/utils/validate-inputs
+      with:
+        actionInputs: |
+          GHA_CICD_MAVEN_OPTS: "${{ env.GHA_CICD_MAVEN_OPTS }}"
+          GHA_CICD_MAVEN_BUILD_CMD: "${{ env.GHA_CICD_MAVEN_BUILD_CMD }}"
+          GHA_CICD_MAVEN_BUILD_OPTS: "${{ env.GHA_CICD_MAVEN_BUILD_OPTS }}"
+        optionalInputs: |
+          - GHA_CICD_MAVEN_OPTS
+          - GHA_CICD_MAVEN_BUILD_CMD
+          - GHA_CICD_MAVEN_BUILD_OPTS
+        typeValidations: |
+          string:
+            - GHA_CICD_MAVEN_OPTS
+            - GHA_CICD_MAVEN_BUILD_CMD
+            - GHA_CICD_MAVEN_BUILD_OPTS
+
+    # --- Build Step ---
+    - name: Run Maven Build
+      id: maven_build
+      shell: bash
+      run: |
+        echo "::group::Maven Build"
+        set -euo pipefail
+
+        BUILD_CMD="${GHA_CICD_MAVEN_BUILD_CMD:-package}"
+        BUILD_OPTS="${GHA_CICD_MAVEN_BUILD_OPTS:-}"
+        MVN_OPTS="${GHA_CICD_MAVEN_OPTS:-}"
+
+        bash ./cicd-shared-lib/.github/actions/maven-wrapper/utils/maven-invoke.sh \
+          "${BUILD_CMD}" \
+          "${MVN_OPTS} ${BUILD_OPTS}"
+        echo "::endgroup::"
+
+    # --- Post Step ---
+    - name: Post Step (Maven Build)
+      if: ${{ !cancelled() }}
+      shell: bash
+      run: |
+        echo "[POST] Maven build completed."

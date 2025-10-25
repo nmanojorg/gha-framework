@@ -20,6 +20,7 @@ inputs:
   properties_path:
     description: "Path to project-specific properties file"
     required: false
+    default: "false"
 
 outputs:
   lint_status:
@@ -114,7 +115,7 @@ runs:
     - name: Test (Maven)
       id: test
       if: ${{ inputs.run_test == 'true' }}
-      uses: ./cicd-shared-lib/.github/actions/test/maven-java
+      uses: ./cicd-shared-lib/.github/actions/unit_test/maven-java
 
     - name: Build (Maven)
       id: build

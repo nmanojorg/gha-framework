@@ -9,9 +9,9 @@ runs:
       shell: bash
       run: |
         echo "[PRE] Preparing for Maven test checks..."
-        
+
     # --- Input Validation ---
-    - name: Validate Inputs and Environment
+    - name: Validate Inputs and Environment (Maven Test)
       uses: ./cicd-shared-lib/.github/actions/utils/validate-inputs
       with:
         actionInputs: |
@@ -31,9 +31,7 @@ runs:
             - GHA_CICD_MAVEN_TEST_OPTS
             - GHA_CICD_MAVEN_TEST_ARTIFACT_PATH
 
-    # --- Test Step ---
-    - name: Run Maven Test
-      id: maven_test
+    - name: Run Maven Test (Maven Test)
       shell: bash
       run: |
         echo "::group::Maven Test"
@@ -46,15 +44,15 @@ runs:
         bash ./cicd-shared-lib/.github/actions/maven-wrapper/utils/maven-invoke.sh \
           "${TEST_CMD}" \
           "${MVN_OPTS} ${TEST_OPTS}"
+
         echo "::endgroup::"
 
-    # --- Discover All Report Directories and TXT Files ---
     - name: Discover Maven Test Report Paths
-      id: discover_test_reports
       if: ${{ !cancelled() }}
       shell: bash
       run: |
         set -euo pipefail
+
         # If user provides a path, use it
         if [[ -n "${GHA_CICD_MAVEN_TEST_ARTIFACT_PATH:-}" ]]; then
           REPORT_DIRS="${GHA_CICD_MAVEN_TEST_ARTIFACT_PATH}"
@@ -62,6 +60,7 @@ runs:
           # Find all target directories recursively, then all *-reports inside them
           REPORT_DIRS=$(find . -type d -name 'target' -exec find {} -type d -name '*-reports' \; | xargs)
         fi
+      
 
         # Find all .txt files in those report directories for PR commenting
         TXT_FILES=""
@@ -86,8 +85,10 @@ runs:
         PR_NUMBER: ${{ github.event.pull_request.number }}
       run: |
         echo "::group::Add Maven Test Results to PR Comment"
+
         # Concatenate all txt files for PR comment
         cat $TXT_FILES > test-results-summary.txt
+
         python3 -m pip install requests
         python3 ./cicd-shared-lib/.github/actions/utils/post_pr_comments.py \
           --repo "$GITHUB_REPOSITORY" \
@@ -95,6 +96,7 @@ runs:
           --title "Maven Test Results" \
           --token "$GITHUB_TOKEN" \
           --report "test-results-summary.txt"
+          
         echo "::endgroup::"
 
     # --- Artifact Upload: Upload all report files ---

@@ -1,0 +1,54 @@
+name: "Publish (Maven Java)"
+description: "Publishes Maven Java artifacts, supporting multi-module and custom project layouts, with robust environment variable configuration."
+
+runs:
+  using: "composite"
+  steps:
+    # --- Pre Step ---
+    - name: Pre Step (Maven Publish)
+      shell: bash
+      run: |
+        echo "[PRE] Preparing for Maven publish..."
+        printenv
+
+    # --- Input Validation ---
+    - name: Validate Inputs and Environment
+      uses: ./cicd-shared-lib/.github/actions/utils/validate-inputs
+      with:
+        actionInputs: |
+          GHA_CICD_MAVEN_OPTS: "${{ env.GHA_CICD_MAVEN_OPTS }}"
+          GHA_CICD_MAVEN_PUBLISH_CMD: "${{ env.GHA_CICD_MAVEN_PUBLISH_CMD }}"
+          GHA_CICD_MAVEN_PUBLISH_OPTS: "${{ env.GHA_CICD_MAVEN_PUBLISH_OPTS }}"
+        optionalInputs: |
+          - GHA_CICD_MAVEN_OPTS
+          - GHA_CICD_MAVEN_PUBLISH_CMD
+          - GHA_CICD_MAVEN_PUBLISH_OPTS
+        typeValidations: |
+          string:
+            - GHA_CICD_MAVEN_OPTS
+            - GHA_CICD_MAVEN_PUBLISH_CMD
+            - GHA_CICD_MAVEN_PUBLISH_OPTS
+
+    # --- Publish Step ---
+    - name: Run Maven Publish
+      id: maven_publish
+      shell: bash
+      run: |
+        echo "::group::Maven Publish"
+        set -euo pipefail
+
+        PUBLISH_CMD="${GHA_CICD_MAVEN_PUBLISH_CMD:-deploy}"
+        PUBLISH_OPTS="${GHA_CICD_MAVEN_PUBLISH_OPTS:-}"
+        MVN_OPTS="${GHA_CICD_MAVEN_OPTS:-}"
+
+        bash ./cicd-shared-lib/.github/actions/maven-wrapper/utils/maven-invoke.sh \
+          "${PUBLISH_CMD}" \
+          "${MVN_OPTS} ${PUBLISH_OPTS}"
+        echo "::endgroup::"
+
+    # --- Post Step ---
+    - name: Post Step (Maven Publish)
+      if: ${{ !cancelled() }}
+      shell: bash
+      run: |
+        echo "[POST] Maven publish completed."
