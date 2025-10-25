@@ -52,7 +52,7 @@ runs:
       with:
         repository: "${{ env.action_repository }}"
         ref: "${{ env.action_ref }}"
-        token: "${{ env.GHA_SHAREDLIB_FG_TOKEN }}"
+        #token: "${{ env.GHA_SHAREDLIB_FG_TOKEN }}"
         path: 'cicd-shared-lib'
       env:
         action_ref: "${{ github.action_ref }}"
