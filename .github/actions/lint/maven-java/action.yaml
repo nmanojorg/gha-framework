@@ -81,13 +81,6 @@ runs:
         spotbugs "${spotbugs_args[@]}" **/target/classes
         echo "::endgroup::"
 
-    # --- Upload SARIF to GitHub (Code Scanning) ---
-    - name: Upload SARIF to GitHub
-      if: ${{ !cancelled() && github.event.pull_request.number != '' }}
-      uses: github/codeql-action/upload-sarif@v3
-      with:
-        sarif_file: ${{ env.GHA_CICD_MAVEN_SPOTBUGS_REPORT_PATH }}
-
     # --- SpotBugs PR Comment ---
     - name: Comment SpotBugs Report on PR
       if: ${{ !cancelled() && github.event.pull_request.number != '' }}
