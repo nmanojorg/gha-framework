@@ -111,15 +111,15 @@ runs:
       if: ${{ inputs.run_lint == 'true' }}
       uses: ./cicd-shared-lib/.github/actions/lint/maven-java
 
-    - name: Build (Maven)
-      id: build
-      if: ${{ inputs.run_build == 'true' }}
-      uses: ./cicd-shared-lib/.github/actions/build/maven-java
-
     - name: Test (Maven)
       id: test
       if: ${{ inputs.run_build == 'true' && inputs.run_test == 'true' }}
       uses: ./cicd-shared-lib/.github/actions/test/maven-java
+      
+    - name: Build (Maven)
+      id: build
+      if: ${{ inputs.run_build == 'true' }}
+      uses: ./cicd-shared-lib/.github/actions/build/maven-java
 
     - name: Publish (Maven)
       id: publish

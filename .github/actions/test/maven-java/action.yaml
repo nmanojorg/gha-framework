@@ -1,0 +1,115 @@
+name: "Test (Maven Java)"
+description: "Runs Maven tests for Java projects, auto-discovers all target folders and report locations, posts PR comments with test summaries, and uploads all test report files as artifacts."
+
+runs:
+  using: "composite"
+  steps:
+    # --- Pre Step ---
+    - name: Pre Step (Maven Test)
+      shell: bash
+      run: |
+        echo "[PRE] Preparing for Maven test checks..."
+        printenv
+
+    # --- Input Validation ---
+    - name: Validate Inputs and Environment
+      uses: ./cicd-shared-lib/.github/actions/utils/validate-inputs
+      with:
+        actionInputs: |
+          GHA_CICD_MAVEN_OPTS: "${{ env.GHA_CICD_MAVEN_OPTS }}"
+          GHA_CICD_MAVEN_TEST_CMD: "${{ env.GHA_CICD_MAVEN_TEST_CMD }}"
+          GHA_CICD_MAVEN_TEST_OPTS: "${{ env.GHA_CICD_MAVEN_TEST_OPTS }}"
+          GHA_CICD_MAVEN_TEST_ARTIFACT_PATH: "${{ env.GHA_CICD_MAVEN_TEST_ARTIFACT_PATH }}"
+        optionalInputs: |
+          - GHA_CICD_MAVEN_OPTS
+          - GHA_CICD_MAVEN_TEST_CMD
+          - GHA_CICD_MAVEN_TEST_OPTS
+          - GHA_CICD_MAVEN_TEST_ARTIFACT_PATH
+        typeValidations: |
+          string:
+            - GHA_CICD_MAVEN_OPTS
+            - GHA_CICD_MAVEN_TEST_CMD
+            - GHA_CICD_MAVEN_TEST_OPTS
+            - GHA_CICD_MAVEN_TEST_ARTIFACT_PATH
+
+    # --- Test Step ---
+    - name: Run Maven Test
+      id: maven_test
+      shell: bash
+      run: |
+        echo "::group::Maven Test"
+        set -euo pipefail
+
+        TEST_CMD="${GHA_CICD_MAVEN_TEST_CMD:-test}"
+        TEST_OPTS="${GHA_CICD_MAVEN_TEST_OPTS:-}"
+        MVN_OPTS="${GHA_CICD_MAVEN_OPTS:-}"
+
+        bash ./cicd-shared-lib/.github/actions/maven-wrapper/utils/maven-invoke.sh \
+          "${TEST_CMD}" \
+          "${MVN_OPTS} ${TEST_OPTS}"
+        echo "::endgroup::"
+
+    # --- Discover All Report Directories and TXT Files ---
+    - name: Discover Maven Test Report Paths
+      id: discover_test_reports
+      if: ${{ !cancelled() }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        # If user provides a path, use it
+        if [[ -n "${GHA_CICD_MAVEN_TEST_ARTIFACT_PATH:-}" ]]; then
+          REPORT_DIRS="${GHA_CICD_MAVEN_TEST_ARTIFACT_PATH}"
+        else
+          # Find all target directories recursively, then all *-reports inside them
+          REPORT_DIRS=$(find . -type d -name 'target' -exec find {} -type d -name '*-reports' \; | xargs)
+        fi
+
+        # Find all .txt files in those report directories for PR commenting
+        TXT_FILES=""
+        for dir in $REPORT_DIRS; do
+          if [[ -d "$dir" ]]; then
+            found_txt=$(find "$dir" -type f -name '*.txt' | sort | xargs)
+            TXT_FILES="$TXT_FILES $found_txt"
+          fi
+        done
+
+        # Export for subsequent steps
+        echo "REPORT_DIRS=$REPORT_DIRS" >> $GITHUB_ENV
+        echo "TXT_FILES=$TXT_FILES" >> $GITHUB_ENV
+
+    # --- PR Comment: Post TXT file(s) contents in PR ---
+    - name: Comment Test Results on PR
+      if: ${{ !cancelled() && github.event.pull_request.number != '' && env.TXT_FILES != '' }}
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+      run: |
+        echo "::group::Add Maven Test Results to PR Comment"
+        # Concatenate all txt files for PR comment
+        cat $TXT_FILES > test-results-summary.txt
+        python3 -m pip install requests
+        python3 ./cicd-shared-lib/.github/actions/utils/post_pr_comments.py \
+          --repo "$GITHUB_REPOSITORY" \
+          --pr "$PR_NUMBER" \
+          --title "Maven Test Results" \
+          --token "$GITHUB_TOKEN" \
+          --report "test-results-summary.txt"
+        echo "::endgroup::"
+
+    # --- Artifact Upload: Upload all report files ---
+    - name: Upload Maven Test Reports as Artifact
+      if: ${{ !cancelled() && env.REPORT_DIRS != '' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: maven-test-reports
+        path: ${{ env.REPORT_DIRS }}
+        overwrite: true
+
+    # --- Post Step ---
+    - name: Post Step (Maven Test)
+      if: ${{ !cancelled() }}
+      shell: bash
+      run: |
+        echo "[POST] Maven test checks completed."
