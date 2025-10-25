@@ -61,7 +61,7 @@ runs:
         echo "::group::SpotBugs Lint"
         set -euo pipefail
         shopt -s globstar
-        
+
         REPORT_PATH="${GHA_CICD_MAVEN_SPOTBUGS_REPORT_PATH}"
 
         mkdir -p "$(dirname "$REPORT_PATH")"
@@ -81,7 +81,7 @@ runs:
           spotbugs_args+=(${GHA_CICD_MAVEN_SPOTBUGS_ADDITIONAL_OPTS})
         fi
 
-        mvn clean compile
+        bash ./cicd-shared-lib/.github/actions/maven-wrapper/utils/maven-invoke.sh "clean compile"
         spotbugs "${spotbugs_args[@]}" **/target/classes
         echo "::endgroup::"
 
