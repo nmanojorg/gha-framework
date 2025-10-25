@@ -82,7 +82,7 @@ runs:
           spotbugs_args+=(${GHA_CICD_MAVEN_SPOTBUGS_ADDITIONAL_OPTS})
         fi
 
-        bash ./cicd-shared-lib/.github/actions/maven-wrapper/utils/maven-invoke.sh "clean compile"
+        bash ./cicd-shared-lib/.github/actions/maven-wrapper/utils/maven-invoke.sh "clean compile" "$GHA_CICD_MAVEN_OPTS"
         spotbugs "${spotbugs_args[@]}" **/target/classes
         echo "::endgroup::"
 
@@ -116,7 +116,7 @@ runs:
         echo "::group::Custom Lint"
         ./cicd-shared-lib/.github/actions/maven-wrapper/utils/maven-invoke.sh \
           "${GHA_CICD_MAVEN_CUSTOM_LINT_CMD}" \
-          "${GHA_CICD_MAVEN_CUSTOM_LINT_OPTS}"
+          "${GHA_CICD_MAVEN_OPTS} ${GHA_CICD_MAVEN_CUSTOM_LINT_OPTS}"
         echo "::endgroup::"
 
     # --- Custom Lint Artifact Upload ---
