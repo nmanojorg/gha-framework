@@ -61,35 +61,26 @@ runs:
         echo "::group::SpotBugs Lint"
         set -euo pipefail
         shopt -s globstar
-        REPORT_PATH="${GHA_CICD_MAVEN_SPOTBUGS_REPORT_PATH}"
-        mkdir -p "$(dirname "$REPORT_PATH")"
         
+        REPORT_PATH="${GHA_CICD_MAVEN_SPOTBUGS_REPORT_PATH}"
+
+        mkdir -p "$(dirname "$REPORT_PATH")"
         spotbugs_args=(
           -output "$REPORT_PATH"
-          -emacs
+           -emacs
           -exitcode
           -progress
           -textui
         )
-        
-        # Safely handle exclude file
+
         if [[ -n "${GHA_CICD_MAVEN_SPOTBUGS_EXCLUDE_FILE:-}" ]]; then
           echo "[INFO] Using SpotBugs exclude bugs file: ${GHA_CICD_MAVEN_SPOTBUGS_EXCLUDE_FILE}"
           spotbugs_args+=(-excludeBugs "${GHA_CICD_MAVEN_SPOTBUGS_EXCLUDE_FILE}")
         fi
-        
-        # Safely handle additional opts: reject unsafe input!
         if [[ -n "${GHA_CICD_MAVEN_SPOTBUGS_ADDITIONAL_OPTS:-}" ]]; then
-          # Reject known shell metacharacters to prevent injection
-          if [[ "${GHA_CICD_MAVEN_SPOTBUGS_ADDITIONAL_OPTS}" =~ [;\&\|\$()] ]]; then
-            echo "[ERROR] Unsafe characters detected in GHA_CICD_MAVEN_SPOTBUGS_ADDITIONAL_OPTS!"
-            exit 1
-          fi
-          # Split additional opts safely
-          read -r -a extra_opts <<< "${GHA_CICD_MAVEN_SPOTBUGS_ADDITIONAL_OPTS}"
-          spotbugs_args+=("${extra_opts[@]}")
+          spotbugs_args+=(${GHA_CICD_MAVEN_SPOTBUGS_ADDITIONAL_OPTS})
         fi
-        
+
         mvn clean compile
         spotbugs "${spotbugs_args[@]}" **/target/classes
         echo "::endgroup::"
