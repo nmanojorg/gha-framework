@@ -113,9 +113,9 @@ runs:
 
     - name: Test (Maven)
       id: test
-      if: ${{ inputs.run_build == 'true' && inputs.run_test == 'true' }}
+      if: ${{ inputs.run_test == 'true' }}
       uses: ./cicd-shared-lib/.github/actions/test/maven-java
-      
+
     - name: Build (Maven)
       id: build
       if: ${{ inputs.run_build == 'true' }}
