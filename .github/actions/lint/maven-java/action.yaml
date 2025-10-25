@@ -85,7 +85,7 @@ runs:
           spotbugs_args+=(${GHA_CICD_MAVEN_SPOTBUGS_ADDITIONAL_OPTS})
         fi
 
-        bash ./cicd-shared-lib/.github/actions/maven-wrapper/utils/maven-invoke.sh "clean compile" "$GHA_CICD_MAVEN_OPTS"
+        bash ./cicd-shared-lib/.github/actions/maven-wrapper/utils/maven-invoke.sh "clean compile" "${GHA_CICD_MAVEN_OPTS:-}"
         spotbugs "${spotbugs_args[@]}" **/target/classes
         echo "::endgroup::"
 

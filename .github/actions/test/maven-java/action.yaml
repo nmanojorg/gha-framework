@@ -40,7 +40,7 @@ runs:
         echo "::group::Maven Test"
         set -euo pipefail
 
-        TEST_CMD="${GHA_CICD_MAVEN_TEST_CMD:-test}"
+        TEST_CMD="${GHA_CICD_MAVEN_TEST_CMD:-}"
         TEST_OPTS="${GHA_CICD_MAVEN_TEST_OPTS:-}"
         MVN_OPTS="${GHA_CICD_MAVEN_OPTS:-}"
 
