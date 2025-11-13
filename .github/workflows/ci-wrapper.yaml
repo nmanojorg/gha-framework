@@ -51,7 +51,7 @@ jobs:
         with:
           repository: "nmanojorg/gha-framework"
           ref: ${{ inputs.shared_lib_ref }}
-          token: "${{ env.GHA_SHAREDLIB_FG_TOKEN }}"
+          #token: "${{ env.GHA_SHAREDLIB_FG_TOKEN }}"
           path: 'cicd-shared-lib'
 
       - name: "Set CICD_SHARED_LIB_EXISTS Variable"
