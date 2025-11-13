@@ -73,9 +73,6 @@ jobs:
           echo "::group::Importing Secrets as Env Vars"
           python3 -m pip install pyyaml
           echo "${{ inputs.GENERIC_YAML_SECRET }}" > generic_secrets.yaml
-          if [ ! -s generic_secrets.yaml ]; then
-            echo "No secrets found in GENERIC_YAML_SECRET."
-            exit 0
-          fi
+          cat generic_secrets.yaml
           python3 $GITHUB_WORKSPACE/cicd-shared-lib/.github/actions/utils/import_secret_envs_from_yaml.py generic_secrets.yaml
           echo "::endgroup::"
