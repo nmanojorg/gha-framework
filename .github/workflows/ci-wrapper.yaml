@@ -26,10 +26,15 @@ on:
       GENERIC_YAML_SECRET:
         required: false
         type: string
+      env_value:
+        required: false
+        type: string
+        default: "test"
 
 jobs:
   ci:
     runs-on: ubuntu-latest  
+    environment: "${{ inputs.env_value || "test" }}"
     steps:
 
       - name: "Checkout Source Code"
