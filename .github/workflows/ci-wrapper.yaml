@@ -1,0 +1,80 @@
+###############################################################
+# Reusable CI Wrapper Workflow
+#
+# Purpose:
+#   This workflow provides a reusable CI/CD pipeline for multiple languages (Python, Java/Gradle, Java/Maven, Docker), supporting lint, build, test, coverage, and publish stages. It dynamically loads configuration, secrets, and runs language-specific wrappers. Designed for extensibility and robust artifact/report handling.
+#
+# Usage:
+#   Called via workflow_call with required inputs and secrets. See documentation for details.
+#
+# Features:
+#   - Dynamic stage configuration via JSON
+#   - Secure secret import and masking
+#   - Extensible language wrappers
+#   - Artifact and report uploads
+#   - Step grouping for readable logs
+#   - Configurable runner name (default: gha-it4it-runner)
+###############################################################
+name: "Reusable CI Wrapper"
+on:
+  workflow_call:
+    inputs:
+      shared_lib_ref:
+        description: "Git reference (branch, tag, or SHA) for gha-shared-framework-poc. Must be provided by the user."
+        required: true
+        type: string
+      GENERIC_YAML_SECRET:
+        required: false
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest  
+    steps:
+
+      - name: "Checkout Source Code"
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: "Export Shared FG PAT Token to Env"
+        shell: bash
+        run: |
+          echo "::group::Export Shared FG PAT Token"
+          echo "GHA_SHAREDLIB_FG_TOKEN=$GHA_SHAREDLIB_FG_TOKEN" >> $GITHUB_ENV
+          echo "::endgroup::"
+
+      - name: "Checkout CICD Shared Repository"
+        id: ci_checkout_shared_lib
+        if: env.CICD_SHARED_LIB_EXISTS != 'true'
+        uses: actions/checkout@v5
+        with:
+          repository: "nbnco-sandbox/gha-shared-framework-poc"
+          ref: ${{ inputs.shared_lib_ref }}
+          #token: "${{ env.GHA_SHAREDLIB_FG_TOKEN }}"
+          path: 'cicd-shared-lib'
+
+      - name: "Set CICD_SHARED_LIB_EXISTS Variable"
+        if: steps.ci_checkout_shared_lib.outcome == 'success'
+        shell: bash
+        run: |
+          echo "::group::Set CICD_SHARED_LIB_EXISTS Variable"
+          echo "CICD_SHARED_LIB_EXISTS=true" >> $GITHUB_ENV
+          echo "::endgroup::"
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.GHA_CICD_PYTHON_VERSION || '3.9' }}
+
+      - name: "Import Secrets as Environment Variables"
+        shell: bash
+        run: |
+          echo "::group::Importing Secrets as Env Vars"
+          python3 -m pip install pyyaml
+          echo "${{ inputs.GENERIC_YAML_SECRET }}" > generic_secrets.yaml
+          if [ ! -s generic_secrets.yaml ]; then
+            echo "No secrets found in GENERIC_YAML_SECRET."
+            exit 0
+          fi
+          python3 $GITHUB_WORKSPACE/cicd-shared-lib/.github/actions/utils/import_secret_envs_from_yaml.py generic_secrets.yaml
+          echo "::endgroup::"
