@@ -77,11 +77,13 @@ jobs:
           echo "::group::Importing Secrets as Env Vars"
           echo "${{ vars.var1}}"
           echo "${{ secrets.secret1 }}"
+          echo "${{ fromJson(inputs.GENERIC_YAML_SECRET) }}"
           python3 -m pip install pyyaml
           echo "${{ inputs.GENERIC_YAML_SECRET }}" > generic_secrets.yaml
           cat generic_secrets.yaml | jq
           python3 $GITHUB_WORKSPACE/cicd-shared-lib/.github/actions/utils/import_secret_envs_from_yaml.py generic_secrets.yaml
           echo "::endgroup::"
+
 
 
 
