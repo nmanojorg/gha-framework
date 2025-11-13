@@ -29,12 +29,11 @@ on:
       env_value:
         required: false
         type: string
-        default: "test"
 
 jobs:
   ci:
     runs-on: ubuntu-latest  
-    environment: "test"
+    environment: "${{ inputs.env_value }}"
     steps:
 
       - name: "Checkout Source Code"
@@ -83,5 +82,6 @@ jobs:
           cat generic_secrets.yaml | jq
           python3 $GITHUB_WORKSPACE/cicd-shared-lib/.github/actions/utils/import_secret_envs_from_yaml.py generic_secrets.yaml
           echo "::endgroup::"
+
 
 
