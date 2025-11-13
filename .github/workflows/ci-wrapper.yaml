@@ -49,7 +49,7 @@ jobs:
         if: env.CICD_SHARED_LIB_EXISTS != 'true'
         uses: actions/checkout@v5
         with:
-          repository: "nbnco-sandbox/gha-shared-framework-poc"
+          repository: "nmanojorg/gha-framework"
           ref: ${{ inputs.shared_lib_ref }}
           #token: "${{ env.GHA_SHAREDLIB_FG_TOKEN }}"
           path: 'cicd-shared-lib'
