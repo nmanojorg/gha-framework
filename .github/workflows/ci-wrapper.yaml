@@ -25,6 +25,7 @@ on:
         type: string
       GENERIC_YAML_SECRET:
         required: false
+        type: string
 
 jobs:
   ci:
