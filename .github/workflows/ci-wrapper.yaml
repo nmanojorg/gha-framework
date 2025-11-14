@@ -36,6 +36,13 @@ jobs:
     environment: "${{ inputs.env_value }}"
     steps:
 
+      - name: Test123
+        shell: bash
+        run: |
+              ls -ltr
+              pwd
+
+        
       - name: "Checkout Source Code"
         uses: actions/checkout@v4
         with:
@@ -83,6 +90,7 @@ jobs:
           cat generic_secrets.yaml | jq
           python3 $GITHUB_WORKSPACE/cicd-shared-lib/.github/actions/utils/import_secret_envs_from_yaml.py generic_secrets.yaml
           echo "::endgroup::"
+
 
 
 
