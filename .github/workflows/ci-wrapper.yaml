@@ -42,54 +42,7 @@ jobs:
               ls -ltr
               pwd
 
-        
-      - name: "Checkout Source Code"
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: "Export Shared FG PAT Token to Env"
-        shell: bash
-        run: |
-          echo "::group::Export Shared FG PAT Token"
-          echo "GHA_SHAREDLIB_FG_TOKEN=$GHA_SHAREDLIB_FG_TOKEN" >> $GITHUB_ENV
-          echo "::endgroup::"
-
-      - name: "Checkout CICD Shared Repository"
-        id: ci_checkout_shared_lib
-        if: env.CICD_SHARED_LIB_EXISTS != 'true'
-        uses: actions/checkout@v5
-        with:
-          repository: "nmanojorg/gha-framework"
-          ref: ${{ inputs.shared_lib_ref }}
-          #token: "${{ env.GHA_SHAREDLIB_FG_TOKEN }}"
-          path: 'cicd-shared-lib'
-
-      - name: "Set CICD_SHARED_LIB_EXISTS Variable"
-        if: steps.ci_checkout_shared_lib.outcome == 'success'
-        shell: bash
-        run: |
-          echo "::group::Set CICD_SHARED_LIB_EXISTS Variable"
-          echo "CICD_SHARED_LIB_EXISTS=true" >> $GITHUB_ENV
-          echo "::endgroup::"
-
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: ${{ env.GHA_CICD_PYTHON_VERSION || '3.9' }}
-
-      - name: "Import Secrets as Environment Variables"
-        shell: bash
-        run: |
-          echo "::group::Importing Secrets as Env Vars"
-          echo "${{ vars.var1}}"
-          echo "${{ secrets.secret1 }}"
-          echo "${{ fromJson(inputs.GENERIC_YAML_SECRET) }}"
-          python3 -m pip install pyyaml
-          echo "${{ inputs.GENERIC_YAML_SECRET }}" > generic_secrets.yaml
-          cat generic_secrets.yaml | jq
-          python3 $GITHUB_WORKSPACE/cicd-shared-lib/.github/actions/utils/import_secret_envs_from_yaml.py generic_secrets.yaml
-          echo "::endgroup::"
+       
 
 
 
