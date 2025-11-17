@@ -40,8 +40,10 @@ jobs:
         shell: bash
         run: |
               echo ${{ vars.VAR1 }}
+              echo ${{ vars.var1 }}
 
        
+
 
 
 
