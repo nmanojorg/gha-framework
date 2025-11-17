@@ -39,10 +39,10 @@ jobs:
       - name: Test123
         shell: bash
         run: |
-              ls -ltr
-              pwd
+              echo ${{ vars.var1 }}
 
        
+
 
 
 
