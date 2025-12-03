@@ -1,53 +1,56 @@
-###############################################################
-# Reusable CI Wrapper Workflow
-#
-# Purpose:
-#   This workflow provides a reusable CI/CD pipeline for multiple languages (Python, Java/Gradle, Java/Maven, Docker), supporting lint, build, test, coverage, and publish stages. It dynamically loads configuration, secrets, and runs language-specific wrappers. Designed for extensibility and robust artifact/report handling.
-#
-# Usage:
-#   Called via workflow_call with required inputs and secrets. See documentation for details.
-#
-# Features:
-#   - Dynamic stage configuration via JSON
-#   - Secure secret import and masking
-#   - Extensible language wrappers
-#   - Artifact and report uploads
-#   - Step grouping for readable logs
-#   - Configurable runner name (default: gha-it4it-runner)
-###############################################################
-name: "Reusable CI Wrapper"
 on:
   workflow_call:
-    inputs:
-      shared_lib_ref:
-        description: "Git reference (branch, tag, or SHA) for gha-shared-framework-poc. Must be provided by the user."
-        required: true
-        type: string
-      GENERIC_YAML_SECRET:
-        required: false
-        type: string
-      env_value:
-        required: false
-        type: string
+        
+permissions:
+  id-token: write
+  contents: read
 
 jobs:
-  ci:
-    runs-on: ubuntu-latest  
-    environment: "${{ inputs.env_value }}"
+  set-secrets-env:
+    runs-on: ubuntu-latest
     steps:
-
-      - name: Test123
-        shell: bash
-        run: |
-              echo ${{ vars.VAR1 }}
-              echo ${{ vars.var1 }}
-
-       
+    # Checkout the repository to the GitHub Actions runner
+    - name: Checkout
+      uses: actions/checkout@v2
 
 
+    # Shout out to Benjamin Pannell at Sierra Softworks for this
+    # https://sierrasoftworks.com/2021/12/20/vault-github-actions/#policies
+    - name: Troubleshooting
+      run: |
+          export AUDIENCE="manoj"  #"https://github.com/${GITHUB_REPOSITORY}"
+          echo $ACTIONS_ID_TOKEN_REQUEST_TOKEN
+          echo $ACTIONS_ID_TOKEN_REQUEST_URL
+          curl -sSL -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=$AUDIENCE" | \
+          jq "{ jwt: .value, role: \"$VAULT_ROLE\" }" > ./token.json
+            
+          echo 'GitHub Actions Token Claims'
+          cat ./token.json
+          cat ./token.json | jq -r '.jwt | split(".") | .[1] | @base64d' | jq
+          echo 'Vault Login Response'
+          curl -sSLf -X POST -H "Content-Type: application/json" -H "X-Vault-Namespace: admin" --data @token.json $VAULT_URL/v1/auth/$VAULT_AUTH_PATH/login
+          # Remove the token file when we're done (if we don't fail)
+          rm ./token.json
+      env:
+        VAULT_URL: http://3.109.208.8:8200
+        VAULT_AUTH_PATH: jwt
+        VAULT_ROLE: github-actions
+        ACTIONS_ID_TOKEN_REQUEST_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        ACTIONS_ID_TOKEN_REQUEST_URL: ${{ env.ACTIONS_ID_TOKEN_REQUEST_URL }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
 
+    - name: Retrieve Secrets
+      id: secretdata
+      uses: hashicorp/vault-action@v2.4.0
+      with: 
+        method: jwt
+        url: http://3.109.208.8:8200
+        namespace: admin
+        role: github-actions
+        jwtGithubAudience: manoj
+        secrets: secret/data/test a | MY_SECRET
+        
 
-
-
-
-
+    - name: Print Secrets
+      run: |
+          echo '${{ steps.secretdata.outputs.MY_SECRET }}'
