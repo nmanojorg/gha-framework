@@ -15,9 +15,9 @@ runs:
       shell: bash
       run: |
           export AUDIENCE="manoj"  #"https://github.com/${GITHUB_REPOSITORY}"
-          echo ${{inputs.github_pat}}
+          echo $SECRET
           echo $ACTIONS_ID_TOKEN_REQUEST_URL
-          curl -sSL -H "Authorization: bearer ${{inputs.github_pat}}" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=$AUDIENCE" | \
+          curl -sSL -H "Authorization: bearer $SECRET" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=$AUDIENCE" | \
           jq "{ jwt: .value, role: \"$VAULT_ROLE\" }" > ./token.json
             
           echo 'GitHub Actions Token Claims'
@@ -30,6 +30,7 @@ runs:
       env:
         VAULT_URL: http://3.109.208.8:8200
         VAULT_AUTH_PATH: jwt
+        SECRET: ${{inputs.github_pat}}
         VAULT_ROLE: github-actions
         ACTIONS_ID_TOKEN_REQUEST_URL: ${{ env.ACTIONS_ID_TOKEN_REQUEST_URL }}
         GITHUB_REPOSITORY: ${{ github.repository }}
