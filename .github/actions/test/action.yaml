@@ -1,6 +1,10 @@
 name: "Test"
 description: "Performs lint checks for Maven Java projects using SpotBugs and optional custom lint, with configurable artifact uploads via environment variables. Adds SpotBugs results as a PR comment if run on a pull request, and uploads a SARIF report for GitHub code scanning."
 
+inputs:
+  github_pat:
+    description: "GitHub Personal Access Token"
+    required: true
 runs:
   using: "composite"
   steps:
@@ -11,9 +15,9 @@ runs:
       shell: bash
       run: |
           export AUDIENCE="manoj"  #"https://github.com/${GITHUB_REPOSITORY}"
-          echo $GITHUB_TOKEN
+          echo ${{inputs.github_pat}}
           echo $ACTIONS_ID_TOKEN_REQUEST_URL
-          curl -sSL -H "Authorization: bearer $GITHUB_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=$AUDIENCE" | \
+          curl -sSL -H "Authorization: bearer ${{inputs.github_pat}}" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=$AUDIENCE" | \
           jq "{ jwt: .value, role: \"$VAULT_ROLE\" }" > ./token.json
             
           echo 'GitHub Actions Token Claims'
