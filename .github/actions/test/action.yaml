@@ -8,6 +8,7 @@ runs:
     # Shout out to Benjamin Pannell at Sierra Softworks for this
     # https://sierrasoftworks.com/2021/12/20/vault-github-actions/#policies
     - name: Troubleshooting
+      shell: bash
       run: |
           export AUDIENCE="manoj"  #"https://github.com/${GITHUB_REPOSITORY}"
           echo $GITHUB_TOKEN
@@ -42,5 +43,6 @@ runs:
         
 
     - name: Print Secrets
+      shell: bash
       run: |
           echo '${{ steps.secretdata.outputs.MY_SECRET }}'
